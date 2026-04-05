@@ -23,7 +23,101 @@ import { buildMockInventoryRows } from '@/lib/mockData';
 import { UI_CONSTANTS } from '@/lib/constants';
 import { formatNumber } from '@/lib/numberFormat';
 import { useI18n } from '@/lib/i18n';
+import { supabase } from '@/lib/db';
 import type { HolidayEvent, TrendDirection } from '@/types';
+
+const SHIFT_LABELS = ['Morning', 'Noon', 'Afternoon'] as const;
+
+type ShiftLabel = (typeof SHIFT_LABELS)[number];
+type ShiftConfidence = 'High' | 'Medium' | 'Low';
+
+type ShiftHistoryPoint = {
+  quantitySold: number;
+  totalTransactions: number;
+};
+
+type ShiftEstimate =
+  | {
+    status: 'insufficient_data';
+    missingCount: number;
+    count: number;
+  }
+  | {
+    status: 'ready';
+    prediction: number;
+    cv: number;
+    confidence: ShiftConfidence;
+    avgTransactions: number;
+  };
+
+type ShiftEstimatesByLabel = Record<ShiftLabel, ShiftEstimate>;
+
+type DatabaseItemOption = {
+  id: string;
+  label: string;
+};
+
+const EMPTY_SHIFT_ESTIMATE: ShiftEstimate = {
+  status: 'insufficient_data',
+  missingCount: 7,
+  count: 0
+};
+
+const INITIAL_SHIFT_ESTIMATES: ShiftEstimatesByLabel = {
+  Morning: EMPTY_SHIFT_ESTIMATE,
+  Noon: EMPTY_SHIFT_ESTIMATE,
+  Afternoon: EMPTY_SHIFT_ESTIMATE
+};
+
+function average(values: number[]) {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function standardDeviation(values: number[], mean: number) {
+  if (values.length === 0) return 0;
+  const variance = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function confidenceFromCv(cv: number): ShiftConfidence {
+  if (cv < 0.15) return 'High';
+  if (cv <= 0.30) return 'Medium';
+  return 'Low';
+}
+
+function estimateFromShiftHistory(points: ShiftHistoryPoint[]): ShiftEstimate {
+  if (points.length < 7) {
+    return {
+      status: 'insufficient_data',
+      missingCount: 7 - points.length,
+      count: points.length
+    };
+  }
+
+  const orderedPoints = points.slice().reverse();
+  const weightedNumerator = orderedPoints.reduce((sum, point, index) => sum + (point.quantitySold * (index + 1)), 0);
+  const prediction = Math.round(weightedNumerator / 28);
+  const quantities = orderedPoints.map((point) => point.quantitySold);
+  const quantitiesMean = average(quantities);
+  const sigma = standardDeviation(quantities, quantitiesMean);
+  const cv = quantitiesMean > 0 ? sigma / quantitiesMean : 1;
+  const avgTransactions = Math.round(average(orderedPoints.map((point) => point.totalTransactions)));
+
+  return {
+    status: 'ready',
+    prediction,
+    cv,
+    confidence: confidenceFromCv(cv),
+    avgTransactions
+  };
+}
+
+function badgeToneFromConfidence(confidence: ShiftConfidence): 'success' | 'warning' | 'danger' {
+  if (confidence === 'High') return 'success';
+  if (confidence === 'Medium') return 'warning';
+  return 'danger';
+}
 
 function TrendIcon({ trend }: { trend: TrendDirection }) {
   if (trend === 'up') return <ArrowUpRight className="h-4 w-4 text-emerald-600" />;
@@ -45,6 +139,7 @@ function formatFreshness(lastImportedAt: string | null, t: (key: string) => stri
 export default function ForecastPage() {
   const { t } = useI18n();
   const profile = useAppStore((state) => state.profile);
+  const restaurantId = useAppStore((state) => state.restaurantId);
   const importedRows = useImportMemoryStore((state) => state.importedRows);
   const hasImportedData = useImportMemoryStore((state) => state.hasImportedData);
   const lastImportedAt = useImportMemoryStore((state) => state.lastImportedAt);
@@ -60,6 +155,12 @@ export default function ForecastPage() {
   const [selectedViewId, setSelectedViewId] = useState('');
   const [holidayEvents, setHolidayEvents] = useState<HolidayEvent[]>([]);
   const [holidayLoading, setHolidayLoading] = useState(false);
+  const [dbItemsLoading, setDbItemsLoading] = useState(false);
+  const [dbItemOptions, setDbItemOptions] = useState<DatabaseItemOption[]>([]);
+  const [selectedDbItemId, setSelectedDbItemId] = useState('');
+  const [shiftEstimatesLoading, setShiftEstimatesLoading] = useState(false);
+  const [shiftEstimatesError, setShiftEstimatesError] = useState<string | null>(null);
+  const [shiftEstimates, setShiftEstimates] = useState<ShiftEstimatesByLabel>(INITIAL_SHIFT_ESTIMATES);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -178,6 +279,134 @@ export default function ForecastPage() {
     };
   }, [profile.holidayRegion]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDbItems = async () => {
+      if (!restaurantId) {
+        setDbItemOptions([]);
+        setSelectedDbItemId('');
+        return;
+      }
+
+      setDbItemsLoading(true);
+      try {
+        const response = await fetch(`/api/items?restaurantId=${restaurantId}`);
+        const items = await response.json();
+        if (!response.ok) {
+          throw new Error('Unable to load items from database.');
+        }
+
+        const options: DatabaseItemOption[] = (items ?? [])
+          .filter((item: { id?: string; itemName?: string }) => item.id && item.itemName)
+          .map((item: { id: string; itemName: string }) => ({
+            id: item.id,
+            label: item.itemName
+          }));
+
+        if (!cancelled) {
+          setDbItemOptions(options);
+          setSelectedDbItemId((current) => {
+            if (options.length === 0) return '';
+            if (options.some((option) => option.id === current)) return current;
+            return options[0].id;
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setDbItemOptions([]);
+          setSelectedDbItemId('');
+        }
+      } finally {
+        if (!cancelled) {
+          setDbItemsLoading(false);
+        }
+      }
+    };
+
+    void loadDbItems();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadShiftEstimates = async () => {
+      if (!selectedDbItemId) {
+        setShiftEstimates(INITIAL_SHIFT_ESTIMATES);
+        setShiftEstimatesError(null);
+        return;
+      }
+
+      setShiftEstimatesLoading(true);
+      setShiftEstimatesError(null);
+
+      try {
+        const shiftResults = await Promise.all(
+          SHIFT_LABELS.map(async (shiftLabel) => {
+            const { data, error } = await supabase
+              .from('shift_item_sales')
+              .select(`
+                quantity_sold,
+                shift_summaries!inner (
+                  date,
+                  time_block,
+                  total_transactions
+                )
+              `)
+              .eq('item_id', selectedDbItemId)
+              .eq('shift_summaries.time_block', shiftLabel)
+              .order('date', { ascending: false, referencedTable: 'shift_summaries' })
+              .limit(7);
+
+            if (error) {
+              throw new Error(error.message);
+            }
+
+            const historyPoints: ShiftHistoryPoint[] = (data ?? []).map((row) => {
+              const summary = Array.isArray(row.shift_summaries) ? row.shift_summaries[0] : row.shift_summaries;
+              return {
+                quantitySold: Number(row.quantity_sold ?? 0),
+                totalTransactions: Number(summary?.total_transactions ?? 0)
+              };
+            });
+
+            return [shiftLabel, estimateFromShiftHistory(historyPoints)] as const;
+          })
+        );
+
+        if (!cancelled) {
+          const nextEstimates = shiftResults.reduce<ShiftEstimatesByLabel>(
+            (acc, [shiftLabel, estimate]) => ({
+              ...acc,
+              [shiftLabel]: estimate
+            }),
+            INITIAL_SHIFT_ESTIMATES
+          );
+          setShiftEstimates(nextEstimates);
+        }
+      } catch {
+        if (!cancelled) {
+          setShiftEstimatesError('Unable to load shift estimates right now.');
+          setShiftEstimates(INITIAL_SHIFT_ESTIMATES);
+        }
+      } finally {
+        if (!cancelled) {
+          setShiftEstimatesLoading(false);
+        }
+      }
+    };
+
+    void loadShiftEstimates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDbItemId]);
+
   const exportCsv = () => {
     const csv = Papa.unparse(generateForecastExportRows(forecast.tableRows));
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -251,16 +480,56 @@ export default function ForecastPage() {
                 </Button>
               </div>
             </div>
-            {forecastMode === 'item' ? (
-              <div>
-                <p className="mb-2 text-sm text-text-muted">{t('forecast.item')}</p>
-                <Select options={availableItems.map((item) => ({ label: item, value: item }))} value={resolvedFocusItem} onChange={(event) => setFocusItem(event.target.value)} />
-              </div>
-            ) : null}
             <div className="flex items-end">
               <Button className="w-full" onClick={exportCsv}>
                 <Download className="h-4 w-4" /> {t('forecast.exportCsv')}
               </Button>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-border p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-text">Shift WMA Estimates (7 reports)</p>
+              {shiftEstimatesLoading ? <Badge tone="neutral">Calculating...</Badge> : null}
+            </div>
+            <div className="mt-3">
+              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-text-muted">Database Product</p>
+              <Select
+                options={dbItemOptions.map((item) => ({ label: item.label, value: item.id }))}
+                value={selectedDbItemId}
+                onChange={(event) => setSelectedDbItemId(event.target.value)}
+                disabled={dbItemsLoading || dbItemOptions.length === 0}
+              />
+            </div>
+            {shiftEstimatesError ? <p className="mt-3 text-xs text-red-600">{shiftEstimatesError}</p> : null}
+            {!restaurantId ? <p className="mt-3 text-xs text-text-muted">Set a restaurant first to load product options.</p> : null}
+            {restaurantId && !dbItemsLoading && dbItemOptions.length === 0 ? (
+              <p className="mt-3 text-xs text-text-muted">No database products available for this restaurant.</p>
+            ) : null}
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {SHIFT_LABELS.map((shiftLabel) => {
+                const estimate = shiftEstimates[shiftLabel];
+                return (
+                  <div key={shiftLabel} className="rounded-2xl border border-border bg-surface-muted p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{shiftLabel}</p>
+                      {estimate.status === 'ready' ? (
+                        <Badge tone={badgeToneFromConfidence(estimate.confidence)}>{estimate.confidence}</Badge>
+                      ) : (
+                        <Badge tone="neutral">Insufficient Data</Badge>
+                      )}
+                    </div>
+                    {estimate.status === 'ready' ? (
+                      <>
+                        <p className="mt-2 text-sm font-medium">Estimate: <span className="font-mono">{estimate.prediction}</span> units</p>
+                        <p className="mt-1 text-xs text-text-muted">Based on avg. {estimate.avgTransactions} transactions</p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-xs text-text-muted">Need {estimate.missingCount} more reports for this shift.</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

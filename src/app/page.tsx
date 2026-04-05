@@ -44,7 +44,6 @@ export default function LandingPage() {
   const setProfile = useAppStore((state) => state.setProfile);
   
   const [restaurantId, setRestaurantIdInput] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +62,7 @@ export default function LandingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           restaurantId: restaurantId.trim(),
-          name: restaurantName.trim() || 'My Restaurant',
+          name: restaurantId.trim(),
           address: 'Unknown Address'
         }),
       });
@@ -159,24 +158,14 @@ export default function LandingPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-5 p-6">
-              <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+              <form onSubmit={handleSubmit} className="grid gap-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-text">Restaurant ID</label>
                   <input 
                     className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" 
-                    placeholder="Enter your restaurant ID"
+                    placeholder="Enter your restaurant name"
                     value={restaurantId}
                     onChange={(e) => setRestaurantIdInput(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Restaurant name</label>
-                  <input 
-                    className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" 
-                    placeholder="La Furculiță"
-                    value={restaurantName}
-                    onChange={(e) => setRestaurantName(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>

@@ -105,7 +105,8 @@ export async function extractFiscalData(
     model: 'gemini-2.5-flash-lite',
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 10000,
+      maxOutputTokens: 5001,
+      responseMimeType: 'application/json',
     },
   });
 
@@ -140,7 +141,8 @@ export async function extractFiscalData(
   
   try {
     const parsed = JSON.parse(jsonText) as ExtractedFiscalData;
-    
+
+  // Validate required fields
     // Validate required fields
     if (!parsed.date || !parsed.time_block || typeof parsed.total_revenue !== 'number') {
       throw new Error('Missing required fields in extracted data');
@@ -150,6 +152,14 @@ export async function extractFiscalData(
     if (!Array.isArray(parsed.items)) {
       parsed.items = [];
     }
+
+    const normalizedTransactions = Number.isFinite(parsed.transactions)
+      ? Math.max(0, Math.trunc(parsed.transactions))
+      : 0;
+
+    parsed.transactions = isStructured
+      ? Math.max(normalizedTransactions, parsed.items.length)
+      : normalizedTransactions;
 
     return parsed;
   } catch (error) {

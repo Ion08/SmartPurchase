@@ -6,8 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { restaurantId, name, address } = body;
+    const restaurantKey = (restaurantId || name || '').trim();
 
-    if (!name) {
+    if (!restaurantKey) {
       return NextResponse.json({ error: 'Restaurant name is required' }, { status: 400 });
     }
 
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     const { data: existingRestaurant, error: findError } = await supabase
       .from('restaurants')
       .select('id, name, address, type, plan, location_name, holiday_region, stop_buy_threshold, notifications_email, notifications_whatsapp, notifications_low_stock, notifications_forecast')
-      .ilike('name', name.trim())
+      .ilike('name', restaurantKey)
       .is('deleted_at', null)
       .single();
 
@@ -55,11 +56,11 @@ export async function POST(request: NextRequest) {
       .from('restaurants')
       .insert({
         id: newRestaurantId,
-        name: name.trim(),
+        name: restaurantKey,
         address: address || 'Unknown Address',
         type: 'independent',
         plan: 'Basic',
-        location_name: name.trim(),
+        location_name: restaurantKey,
         holiday_region: 'MD',
         stop_buy_threshold: 3,
         notifications_email: true,

@@ -10,7 +10,7 @@ CREATE TABLE shift_summaries (
   total_revenue DECIMAL(12, 2) NOT NULL DEFAULT 0,
   total_transactions INTEGER NOT NULL DEFAULT 0,
   source_file VARCHAR(255),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at DATE DEFAULT CURRENT_DATE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(restaurant_id, date, time_block)
 );
@@ -22,7 +22,7 @@ CREATE TABLE shift_item_sales (
   summary_id UUID NOT NULL REFERENCES shift_summaries(id) ON DELETE CASCADE,
   quantity_sold DECIMAL(10, 2) NOT NULL DEFAULT 0,
   revenue DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at DATE DEFAULT CURRENT_DATE,
   UNIQUE(item_id, summary_id)
 );
 
