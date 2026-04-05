@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -68,11 +67,6 @@ export default function OrderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge tone={hasImportedData ? 'success' : 'warning'}>{hasImportedData ? t('order.generatedLive') : t('order.generatedMock')}</Badge>
-        <p className="text-sm text-text-muted">{t('order.buffer')}</p>
-      </div>
-
       <Card>
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

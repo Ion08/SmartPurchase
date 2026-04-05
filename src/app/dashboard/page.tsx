@@ -20,23 +20,11 @@ import { formatCurrency, formatNumber } from '@/lib/numberFormat';
 import { UI_CONSTANTS } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n';
 
-function formatFreshness(lastImportedAt: string | null, t: (key: string) => string) {
-  if (!lastImportedAt) return t('common.noImportYet');
-  const diffMinutes = Math.floor((Date.now() - new Date(lastImportedAt).getTime()) / 60000);
-  if (diffMinutes < 1) return t('common.updatedJustNow');
-  if (diffMinutes < 60) return t('common.updatedMinutesAgo').replace('{value}', String(diffMinutes));
-  const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return t('common.updatedHoursAgo').replace('{value}', String(hours));
-  const days = Math.floor(hours / 24);
-  return t('common.updatedDaysAgo').replace('{value}', String(days));
-}
-
 export default function DashboardPage() {
   const { t } = useI18n();
   const router = useRouter();
   const importedRows = useImportMemoryStore((state) => state.importedRows);
   const hasImportedData = useImportMemoryStore((state) => state.hasImportedData);
-  const lastImportedAt = useImportMemoryStore((state) => state.lastImportedAt);
   const activityLog = useAppStore((state) => state.activityLog);
   const [ready, setReady] = useState(false);
 
@@ -82,10 +70,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <AlertBanner alerts={alerts} />
-      <div className="flex flex-wrap items-center gap-3">
-        {!hasImportedData ? <Badge tone="warning">{t('dashboard.mockData')}</Badge> : <Badge tone="success">{t('dashboard.liveData')}</Badge>}
-        <Badge tone={lastImportedAt ? 'neutral' : 'warning'}>{formatFreshness(lastImportedAt, t)}</Badge>
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric, index) => (

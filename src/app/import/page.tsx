@@ -33,25 +33,21 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge tone="neutral">{t('import.badge')}</Badge>
-        <p className="text-sm text-text-muted">{t('import.badgeDesc')}</p>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            rollbackImport();
-            addActivityEvent({
-              type: 'import',
-              title: 'Import rollback',
-              details: 'Reverted to previous imported dataset snapshot.'
-            });
-          }}
-          disabled={previousImportedRows.length === 0}
-        >
-          <Undo2 className="h-4 w-4" /> {t('import.rollback')}
-        </Button>
-      </div>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          rollbackImport();
+          addActivityEvent({
+            type: 'import',
+            title: 'Import rollback',
+            details: 'Reverted to previous imported dataset snapshot.'
+          });
+        }}
+        disabled={previousImportedRows.length === 0}
+      >
+        <Undo2 className="h-4 w-4" /> {t('import.rollback')}
+      </Button>
 
       {!hasImportedData ? (
         <EmptyState

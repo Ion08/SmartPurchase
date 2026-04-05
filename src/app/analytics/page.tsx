@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,11 +62,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge tone="neutral">{t('analytics.badge')}</Badge>
-        <p className="text-sm text-text-muted">{t('analytics.kpi')}</p>
-      </div>
-
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
