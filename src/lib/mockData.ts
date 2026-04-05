@@ -31,6 +31,7 @@ export const restaurantProfile: RestaurantProfile = {
   address: 'Str. București 12, Chișinău, Moldova',
   type: 'independent',
   plan: 'Pro',
+  language: 'en',
   locationName: 'La Furculiță - Centru',
   holidayRegion: 'MD',
   stopBuyThreshold: 3,

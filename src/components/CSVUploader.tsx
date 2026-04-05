@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useI18n } from '@/lib/i18n';
 
 export function CSVUploader() {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const setImportedRows = useImportMemoryStore((state) => state.setImportedRows);
   const addActivityEvent = useAppStore((state) => state.addActivityEvent);
@@ -25,8 +27,9 @@ export function CSVUploader() {
   const handleFiles = async (file: File) => {
     // Validate file size
     if (file.size > CSV_CONSTANTS.maxFileSizeBytes) {
-      setErrors([`File size too large. Maximum ${CSV_CONSTANTS.maxFileSizeMB}MB allowed.`]);
-      toast.error(`File too large (max ${CSV_CONSTANTS.maxFileSizeMB}MB)`);
+      const maxMb = String(CSV_CONSTANTS.maxFileSizeMB);
+      setErrors([t('import.fileTooLargeError').replace('{value}', maxMb)]);
+      toast.error(`${t('import.fileTooLarge')} (max ${maxMb}MB)`);
       return;
     }
 
@@ -54,7 +57,7 @@ export function CSVUploader() {
         title: 'CSV import completed',
         details: `${result.stats.rowsLoaded} rows loaded, quality ${result.stats.dataQualityScore}%`
       });
-      toast.success(`Data imported successfully — ${result.rows.length} rows loaded`);
+      toast.success(`Data imported successfully - ${result.rows.length} ${t('import.loadedRows')}`);
       if (result.warnings.length > 0) {
         toast.warning(result.warnings[0]);
       }
@@ -65,8 +68,8 @@ export function CSVUploader() {
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <Card className="border-border/80">
         <CardHeader>
-          <CardTitle>Import restaurant data</CardTitle>
-          <CardDescription>Upload CSV with sales and stock data.</CardDescription>
+          <CardTitle>{t('import.importDataTitle')}</CardTitle>
+          <CardDescription>{t('import.importDataDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <label
@@ -83,13 +86,13 @@ export function CSVUploader() {
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-forest-700 text-white shadow-soft">
               {isParsing ? <Loader2 className="h-7 w-7 animate-spin" /> : <UploadCloud className="h-7 w-7" />}
             </div>
-            <h3 className="mt-4 text-lg font-semibold">Drop your CSV here</h3>
+            <h3 className="mt-4 text-lg font-semibold">{t('import.dropCsv')}</h3>
             <p className="mt-1 max-w-lg text-sm text-text-muted">
-              Required columns: date, item_name, quantity_sold, unit, stock_current, stock_unit, cost_per_unit.
+              {t('import.requiredColumnsInline')}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
               <Button type="button" onClick={() => inputRef.current?.click()}>
-                <FileUp className="h-4 w-4" /> Upload file
+                <FileUp className="h-4 w-4" /> {t('import.uploadFile')}
               </Button>
             </div>
             <input
@@ -120,8 +123,8 @@ export function CSVUploader() {
 
       <Card className="border-border/80">
         <CardHeader>
-          <CardTitle>Preview</CardTitle>
-          <CardDescription>First 10 rows after validation.</CardDescription>
+          <CardTitle>{t('import.previewTitle')}</CardTitle>
+          <CardDescription>{t('import.previewDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           {isParsing ? (
@@ -137,10 +140,10 @@ export function CSVUploader() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-white/95 dark:bg-slate-950/95">
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Stock</TableHead>
+                      <TableHead>{t('import.date')}</TableHead>
+                      <TableHead>{t('import.item')}</TableHead>
+                      <TableHead>{t('import.qty')}</TableHead>
+                      <TableHead>{t('import.stock')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -158,7 +161,7 @@ export function CSVUploader() {
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-surface-muted p-8 text-center text-sm text-text-muted">
-              Imported rows will appear here once a CSV is loaded.
+              {t('import.previewEmpty')}
             </div>
           )}
         </CardContent>

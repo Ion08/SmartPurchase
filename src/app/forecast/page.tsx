@@ -22,6 +22,7 @@ import { summarizeUpcomingHolidays } from '@/lib/holidayService';
 import { buildMockInventoryRows } from '@/lib/mockData';
 import { UI_CONSTANTS } from '@/lib/constants';
 import { formatNumber } from '@/lib/numberFormat';
+import { useI18n } from '@/lib/i18n';
 import type { HolidayEvent, TrendDirection } from '@/types';
 
 function TrendIcon({ trend }: { trend: TrendDirection }) {
@@ -30,18 +31,19 @@ function TrendIcon({ trend }: { trend: TrendDirection }) {
   return <Minus className="h-4 w-4 text-text-muted" />;
 }
 
-function formatFreshness(lastImportedAt: string | null) {
-  if (!lastImportedAt) return 'No import yet';
+function formatFreshness(lastImportedAt: string | null, t: (key: string) => string) {
+  if (!lastImportedAt) return t('common.noImportYet');
   const diffMinutes = Math.floor((Date.now() - new Date(lastImportedAt).getTime()) / 60000);
-  if (diffMinutes < 1) return 'Updated just now';
-  if (diffMinutes < 60) return `Updated ${diffMinutes}m ago`;
+  if (diffMinutes < 1) return t('common.updatedJustNow');
+  if (diffMinutes < 60) return t('common.updatedMinutesAgo').replace('{value}', String(diffMinutes));
   const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return `Updated ${hours}h ago`;
+  if (hours < 24) return t('common.updatedHoursAgo').replace('{value}', String(hours));
   const days = Math.floor(hours / 24);
-  return `Updated ${days}d ago`;
+  return t('common.updatedDaysAgo').replace('{value}', String(days));
 }
 
 export default function ForecastPage() {
+  const { t } = useI18n();
   const profile = useAppStore((state) => state.profile);
   const importedRows = useImportMemoryStore((state) => state.importedRows);
   const hasImportedData = useImportMemoryStore((state) => state.hasImportedData);
@@ -185,13 +187,13 @@ export default function ForecastPage() {
     link.download = 'smartpurchase-forecast.csv';
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('Forecast exported as CSV');
+    toast.success(t('forecast.exportedCsv'));
   };
 
   const saveCurrentView = () => {
     const normalized = viewName.trim();
     if (!normalized) {
-      toast.error('Name your view before saving');
+      toast.error(t('forecast.nameViewBeforeSave'));
       return;
     }
     saveForecastView({
@@ -201,7 +203,7 @@ export default function ForecastPage() {
       focusItem: forecastMode === 'item' ? resolvedFocusItem : ''
     });
     setViewName('');
-    toast.success(`Saved view: ${normalized}`);
+    toast.success(`${t('forecast.savedView')}: ${normalized}`);
   };
 
   if (!ready) {
@@ -217,19 +219,19 @@ export default function ForecastPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone={hasImportedData ? 'success' : 'warning'}>{hasImportedData ? 'Imported CSV in use' : 'Mock data fallback for La Furculiță'}</Badge>
-        <Badge tone={lastImportedAt ? 'neutral' : 'warning'}>{formatFreshness(lastImportedAt)} • Quality {formatNumber(reliabilityReport.dataQualityScore)}%</Badge>
+        <Badge tone={hasImportedData ? 'success' : 'warning'}>{hasImportedData ? t('forecast.importedCsv') : t('forecast.mockFallback')}</Badge>
+        <Badge tone={lastImportedAt ? 'neutral' : 'warning'}>{formatFreshness(lastImportedAt, t)} • {t('forecast.quality')} {formatNumber(reliabilityReport.dataQualityScore)}%</Badge>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
-              <p className="mb-2 text-sm text-text-muted">Category</p>
+              <p className="mb-2 text-sm text-text-muted">{t('forecast.category')}</p>
               <Select options={availableCategories.map((category) => ({ label: category, value: category }))} value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} />
             </div>
             <div>
-              <p className="mb-2 text-sm text-text-muted">Show by</p>
+              <p className="mb-2 text-sm text-text-muted">{t('forecast.showBy')}</p>
               <div className="inline-flex w-full rounded-2xl border border-border bg-surface-muted p-1">
                 <Button
                   type="button"
@@ -237,7 +239,7 @@ export default function ForecastPage() {
                   className="flex-1 rounded-xl"
                   onClick={() => setForecastMode('item')}
                 >
-                  By item
+                  {t('forecast.byItem')}
                 </Button>
                 <Button
                   type="button"
@@ -245,19 +247,19 @@ export default function ForecastPage() {
                   className="flex-1 rounded-xl"
                   onClick={() => setForecastMode('category')}
                 >
-                  By category
+                  {t('forecast.byCategory')}
                 </Button>
               </div>
             </div>
             {forecastMode === 'item' ? (
               <div>
-                <p className="mb-2 text-sm text-text-muted">Item</p>
+                <p className="mb-2 text-sm text-text-muted">{t('forecast.item')}</p>
                 <Select options={availableItems.map((item) => ({ label: item, value: item }))} value={resolvedFocusItem} onChange={(event) => setFocusItem(event.target.value)} />
               </div>
             ) : null}
             <div className="flex items-end">
               <Button className="w-full" onClick={exportCsv}>
-                <Download className="h-4 w-4" /> Export forecast CSV
+                <Download className="h-4 w-4" /> {t('forecast.exportCsv')}
               </Button>
             </div>
           </div>
@@ -265,28 +267,28 @@ export default function ForecastPage() {
           <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[1fr_1fr_auto] xl:grid-cols-[1fr_1fr_auto_auto]">
             <Select
               options={[
-                { label: 'Load saved view', value: '' },
+                { label: t('forecast.loadSavedView'), value: '' },
                 ...savedForecastViews.map((view) => ({ label: view.name, value: view.id }))
               ]}
               value={selectedViewId}
               onChange={(event) => setSelectedViewId(event.target.value)}
             />
-            <Input value={viewName} onChange={(event) => setViewName(event.target.value)} placeholder="Save current view as..." maxLength={50} />
-            <Button type="button" variant="secondary" onClick={saveCurrentView}>Save view</Button>
+            <Input value={viewName} onChange={(event) => setViewName(event.target.value)} placeholder={t('forecast.saveAs')} maxLength={50} />
+            <Button type="button" variant="secondary" onClick={saveCurrentView}>{t('forecast.saveView')}</Button>
             <Button
               type="button"
               variant="ghost"
               onClick={() => {
                 if (!selectedViewId) {
-                  toast.error('Select a view to delete');
+                  toast.error(t('forecast.selectViewDelete'));
                   return;
                 }
                 deleteForecastView(selectedViewId);
                 setSelectedViewId('');
-                toast.success('Saved view deleted');
+                toast.success(t('forecast.savedViewDeleted'));
               }}
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> {t('forecast.delete')}
             </Button>
           </div>
         </CardContent>
@@ -297,8 +299,8 @@ export default function ForecastPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_0.42fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Forecast table</CardTitle>
-            <CardDescription>Next 30 days of demand for operational planning.</CardDescription>
+            <CardTitle>{t('forecast.tableTitle')}</CardTitle>
+            <CardDescription>{t('forecast.tableDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="overflow-hidden">
             <div className="overflow-hidden rounded-[1.75rem] border border-border">
@@ -306,11 +308,11 @@ export default function ForecastPage() {
                 <Table>
                   <TableHeader className="bg-surface-muted/80">
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Predicted Qty</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead>Trend</TableHead>
+                      <TableHead>{t('import.date')}</TableHead>
+                      <TableHead>{t('forecast.item')}</TableHead>
+                      <TableHead>{t('forecast.predictedQty')}</TableHead>
+                      <TableHead>{t('forecast.confidence')}</TableHead>
+                      <TableHead>{t('forecast.trend')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -340,20 +342,20 @@ export default function ForecastPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Forecast logic</CardTitle>
-              <CardDescription>Weighted average of the last 7 active days with a ±5% variance layer.</CardDescription>
+              <CardTitle>{t('forecast.logicTitle')}</CardTitle>
+              <CardDescription>{t('forecast.logicDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-3xl bg-forest-50 p-4 dark:bg-forest-900/20">
-                <p className="text-xs uppercase tracking-[0.18em] text-forest-800/70 dark:text-forest-100/70">Selected scope</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-forest-800/70 dark:text-forest-100/70">{t('forecast.selectedScope')}</p>
                 <p className="mt-1 text-lg font-semibold">{forecastMode === 'item' ? resolvedFocusItem : selectedCategory}</p>
               </div>
               <div className="rounded-3xl border border-border bg-surface-muted p-4 text-sm text-text-muted">
-                {hasImportedData ? 'Imported rows are used to compute the model. Switch categories to inspect demand patterns by menu section.' : 'Real data is not imported yet, so the engine is using the La Furculiță mock dataset.'}
+                {hasImportedData ? t('forecast.importedRowsInfo') : t('forecast.mockRowsInfo')}
               </div>
               <div className="rounded-2xl border border-border p-3">
-                <p className="text-sm font-medium text-text">Confidence bands</p>
-                <p className="mt-1 text-sm text-text-muted">Bands adapt to volatility and widen over horizon.</p>
+                <p className="text-sm font-medium text-text">{t('forecast.confidenceBands')}</p>
+                <p className="mt-1 text-sm text-text-muted">{t('forecast.confidenceBandsDesc')}</p>
               </div>
               <div className="rounded-3xl border border-border p-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -364,10 +366,10 @@ export default function ForecastPage() {
                     Bias {formatNumber(reliabilityReport.bias, 1)}%
                   </Badge>
                   <Badge tone={reliabilityReport.coverageScore >= 70 ? 'success' : reliabilityReport.coverageScore >= 55 ? 'warning' : 'danger'}>
-                    Band coverage {formatNumber(reliabilityReport.coverageScore)}%
+                    {t('forecast.bandCoverage')} {formatNumber(reliabilityReport.coverageScore)}%
                   </Badge>
                 </div>
-                <p className="mt-3 text-xs text-text-muted">Walk-forward points: {reliabilityReport.backtestPoints}</p>
+                <p className="mt-3 text-xs text-text-muted">{t('forecast.walkForwardPoints')}: {reliabilityReport.backtestPoints}</p>
                 {reliabilityReport.warnings.length > 0 ? (
                   <ul className="mt-2 list-disc pl-5 text-xs text-text-muted">
                     {reliabilityReport.warnings.slice(0, 2).map((warning) => (
@@ -375,15 +377,15 @@ export default function ForecastPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-xs text-text-muted">No critical reliability warnings detected.</p>
+                  <p className="mt-2 text-xs text-text-muted">{t('forecast.noCriticalWarnings')}</p>
                 )}
               </div>
               <div className="rounded-3xl border border-border p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-text">Holiday-aware neural model</p>
-                  <Badge tone={holidayLoading ? 'neutral' : 'success'}>{holidayLoading ? 'Loading holidays' : 'Web holiday lookup on'}</Badge>
+                  <p className="text-sm font-medium text-text">{t('forecast.holidayNeural')}</p>
+                  <Badge tone={holidayLoading ? 'neutral' : 'success'}>{holidayLoading ? t('forecast.loadingHolidays') : t('forecast.webHolidayLookupOn')}</Badge>
                 </div>
-                <p className="mt-1 text-xs text-text-muted">Forecast blends a tiny neural network with holiday signals from an online holiday API and local fallback dates.</p>
+                <p className="mt-1 text-xs text-text-muted">{t('forecast.neuralDesc')}</p>
                 {visibleHolidayImpacts.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     {visibleHolidayImpacts.map((impact) => {
@@ -394,29 +396,29 @@ export default function ForecastPage() {
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-medium">{impact.name}</p>
-                              <p className="text-xs text-text-muted">{impact.date} • {impact.eventType === 'seasonal-event' ? 'Seasonal event' : 'Holiday'} • {impact.phase}</p>
+                              <p className="text-xs text-text-muted">{impact.date} • {impact.eventType === 'seasonal-event' ? t('forecast.seasonalEvent') : t('forecast.holiday')} • {impact.phase}</p>
                             </div>
                             <Badge tone={isUp ? 'success' : isDown ? 'danger' : 'neutral'}>
-                              {isUp ? 'Spike' : isDown ? 'Downgrade' : 'Flat'}
+                              {isUp ? t('forecast.spike') : isDown ? t('forecast.downgrade') : t('forecast.flat')}
                             </Badge>
                           </div>
                           <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                             <div className="rounded-lg bg-white px-2 py-1 dark:bg-slate-950">
-                              <p className="text-text-muted">Baseline</p>
+                              <p className="text-text-muted">{t('forecast.baselineQty')}</p>
                               <p className="font-mono font-semibold">{impact.baselineQty}</p>
                             </div>
                             <div className="rounded-lg bg-white px-2 py-1 dark:bg-slate-950">
-                              <p className="text-text-muted">Adjusted</p>
+                              <p className="text-text-muted">{t('forecast.adjusted')}</p>
                               <p className="font-mono font-semibold">{impact.adjustedQty}</p>
                             </div>
                             <div className="rounded-lg bg-white px-2 py-1 dark:bg-slate-950">
-                              <p className="text-text-muted">Delta</p>
+                              <p className="text-text-muted">{t('forecast.delta')}</p>
                               <p className={`font-mono font-semibold ${isUp ? 'text-emerald-700' : isDown ? 'text-red-600' : 'text-text'}`}>
                                 {impact.deltaQty > 0 ? '+' : ''}{impact.deltaQty} ({impact.deltaPct.toFixed(1)}%)
                               </p>
                             </div>
                           </div>
-                          <p className="mt-2 text-xs text-text-muted">Reasoning: {impact.reason}</p>
+                          <p className="mt-2 text-xs text-text-muted">{t('forecast.reasoning')}: {impact.reason}</p>
                         </div>
                       );
                     })}
@@ -435,11 +437,11 @@ export default function ForecastPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-text-muted">No upcoming holidays in the next 30 days.</p>
+                  <p className="mt-2 text-xs text-text-muted">{t('forecast.noUpcomingHolidays')}</p>
                 )}
               </div>
-              <Button className="w-full" variant="secondary" onClick={() => toast.success('Forecast refreshed successfully')}>
-                Refresh forecast
+              <Button className="w-full" variant="secondary" onClick={() => toast.success(t('forecast.refreshSuccess'))}>
+                {t('forecast.refresh')}
               </Button>
             </CardContent>
           </Card>
@@ -448,9 +450,9 @@ export default function ForecastPage() {
 
       {!hasImportedData ? (
         <EmptyState
-          title="Using mock forecast data"
-          description="Import your own CSV to replace the La Furculiță baseline and generate forecasts from your exact sales pattern."
-          ctaLabel="Go to import"
+          title={t('forecast.usingMockTitle')}
+          description={t('forecast.usingMockDesc')}
+          ctaLabel={t('forecast.goToImport')}
           ctaHref="/import"
         />
       ) : null}

@@ -15,7 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAppStore } from '@/store/useAppStore';
 import { sanitizeInput } from '@/lib/sanitize';
 import { Dialog } from '@/components/ui/dialog';
-import type { HolidayRegion, PlanType, RestaurantType } from '@/types';
+import { useI18n } from '@/lib/i18n';
+import type { HolidayRegion, Language, PlanType, RestaurantType } from '@/types';
 
 const plans: Array<{ name: PlanType; price: string; description: string; features: string[] }> = [
   { name: 'Basic', price: '€79', description: 'For single-site restaurants starting with automation.', features: ['1 location', 'Weekly forecast', 'CSV import'] },
@@ -35,7 +36,13 @@ const holidayRegions: Array<{ value: HolidayRegion; label: string }> = [
   { value: 'GLOBAL', label: 'Global fallback' }
 ];
 
+const languages: Array<{ value: Language; labelKey: string }> = [
+  { value: 'en', labelKey: 'settings.langEnglish' },
+  { value: 'ro', labelKey: 'settings.langRomanian' }
+];
+
 export default function SettingsPage() {
+  const { t } = useI18n();
   const profile = useAppStore((state) => state.profile);
   const setProfile = useAppStore((state) => state.setProfile);
   const setPlan = useAppStore((state) => state.setPlan);
@@ -48,10 +55,10 @@ export default function SettingsPage() {
   const validateProfile = () => {
     const errors: Record<string, string> = {};
     if (!profile.name || profile.name.trim().length === 0) {
-      errors.name = 'Restaurant name is required';
+      errors.name = `${t('settings.restaurantName')} is required`;
     }
     if (!profile.address || profile.address.trim().length === 0) {
-      errors.address = 'Address is required';
+      errors.address = `${t('settings.address')} is required`;
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -59,9 +66,9 @@ export default function SettingsPage() {
 
   const handleSaveChanges = () => {
     if (validateProfile()) {
-      toast.success('Settings saved successfully');
+      toast.success(t('settings.save'));
     } else {
-      toast.error('Please fix validation errors');
+      toast.error(t('settings.fixValidation'));
     }
   };
 
@@ -75,19 +82,19 @@ export default function SettingsPage() {
   const confirmThresholdChange = () => {
     setProfile({ stopBuyThreshold: pendingThreshold });
     setThresholdConfirm(false);
-    toast.success(`Stop-buy threshold updated to ${pendingThreshold} days`);
+    toast.success(`${t('settings.threshold')} updated to ${pendingThreshold} days`);
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Location profile</CardTitle>
-          <CardDescription>Keep the operational profile up to date so forecasts, alerts, and order thresholds stay accurate.</CardDescription>
+          <CardTitle>{t('settings.locationProfile')}</CardTitle>
+          <CardDescription>{t('settings.locationProfileDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-2">
           <div>
-            <Label htmlFor="restaurant-name">Restaurant name</Label>
+            <Label htmlFor="restaurant-name">{t('settings.restaurantName')}</Label>
             <Input 
               id="restaurant-name" 
               className={`mt-2 ${validationErrors.name ? 'border-red-500' : ''}`}
@@ -102,7 +109,7 @@ export default function SettingsPage() {
             {validationErrors.name && <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>}
           </div>
           <div>
-            <Label htmlFor="restaurant-address">Address</Label>
+            <Label htmlFor="restaurant-address">{t('settings.address')}</Label>
             <Textarea 
               id="restaurant-address" 
               className={`mt-2 min-h-[42px] ${validationErrors.address ? 'border-red-500' : ''}`}
@@ -117,7 +124,7 @@ export default function SettingsPage() {
             {validationErrors.address && <p className="mt-1 text-sm text-red-600">{validationErrors.address}</p>}
           </div>
           <div>
-            <Label>Location type</Label>
+            <Label>{t('settings.locationType')}</Label>
             <div className="mt-2 grid gap-3 sm:grid-cols-3">
               {restaurantTypes.map((type) => {
                 const active = profile.type === type.value;
@@ -135,7 +142,7 @@ export default function SettingsPage() {
             </div>
           </div>
             <div>
-              <Label htmlFor="holiday-region">Holiday region</Label>
+              <Label htmlFor="holiday-region">{t('settings.holidayRegion')}</Label>
               <Select
                 id="holiday-region"
                 className="mt-2"
@@ -143,22 +150,33 @@ export default function SettingsPage() {
                 onChange={(event) => setProfile({ holidayRegion: event.target.value as HolidayRegion })}
                 options={holidayRegions}
               />
-              <p className="mt-2 text-xs text-text-muted">Used to load public holidays and local fallback dates for the forecast model.</p>
+              <p className="mt-2 text-xs text-text-muted">{t('settings.holidayRegionDesc')}</p>
             </div>
+
           <div>
-            <Label htmlFor="threshold">Stop-buy threshold: {profile.stopBuyThreshold} days</Label>
+            <Label htmlFor="language">{t('settings.language')}</Label>
+            <Select
+              id="language"
+              className="mt-2"
+              value={profile.language}
+              onChange={(event) => setProfile({ language: event.target.value as Language })}
+              options={languages.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="threshold">{t('settings.threshold')}: {profile.stopBuyThreshold} days</Label>
             <div className="mt-3 rounded-2xl border border-border bg-surface-muted px-4 py-4">
               <Slider value={pendingThreshold} min={1} max={7} step={1} onValueChange={handleThresholdChange} />
             </div>
-            <p className="mt-2 text-xs text-text-muted">Applies immediately to order generation. Lower = earlier orders, Higher = more buffer time.</p>
+            <p className="mt-2 text-xs text-text-muted">{t('settings.thresholdDesc')}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Plan selector</CardTitle>
-          <CardDescription>Choose the pricing tier that matches the current operating complexity.</CardDescription>
+          <CardTitle>{t('settings.planSelector')}</CardTitle>
+          <CardDescription>{t('settings.planSelectorDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-3">
           {plans.map((plan) => {
@@ -172,7 +190,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-lg font-semibold">{plan.name}</p>
-                  {active ? <Badge tone="success">Active</Badge> : null}
+                  {active ? <Badge tone="success">{t('settings.active')}</Badge> : null}
                 </div>
                 <p className="mt-2 font-mono text-3xl font-semibold">{plan.price}</p>
                 <p className="mt-3 text-sm text-text-muted">{plan.description}</p>
@@ -193,15 +211,15 @@ export default function SettingsPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Integrations</CardTitle>
-            <CardDescription>Planned integrations.</CardDescription>
+            <CardTitle>{t('settings.integrations')}</CardTitle>
+            <CardDescription>{t('settings.integrationsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
             {['Square', 'iiko', 'R-Keeper'].map((integration) => (
               <div key={integration} className="rounded-3xl border border-border bg-surface-muted p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{integration}</p>
-                  <Badge tone="neutral">Coming soon</Badge>
+                  <Badge tone="neutral">{t('settings.comingSoon')}</Badge>
                 </div>
               </div>
             ))}
@@ -210,15 +228,15 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Notification preferences</CardTitle>
-            <CardDescription>Decide what should reach your inbox or operations team.</CardDescription>
+            <CardTitle>{t('settings.notificationPrefs')}</CardTitle>
+            <CardDescription>{t('settings.notificationPrefsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {[
-              ['Email alerts', 'email'],
-              ['WhatsApp messages', 'whatsapp'],
-              ['Low stock notifications', 'lowStock'],
-              ['Forecast drift warnings', 'forecast']
+              [t('settings.emailAlerts'), 'email'],
+              [t('settings.whatsappMessages'), 'whatsapp'],
+              [t('settings.lowStock'), 'lowStock'],
+              [t('settings.forecastDrift'), 'forecast']
             ].map(([label, key]) => (
               <div key={String(key)} className="flex items-center justify-between gap-4 rounded-3xl border border-border px-4 py-3">
                 <div>
@@ -244,25 +262,25 @@ export default function SettingsPage() {
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="flex items-center gap-2 text-sm font-medium text-text"><Sparkles className="h-4 w-4 text-amber-500" /> Settings persist locally through Zustand.</p>
-            <p className="mt-1 text-sm text-text-muted">Changes are saved as you interact, so you can safely reload the workspace.</p>
+            <p className="flex items-center gap-2 text-sm font-medium text-text"><Sparkles className="h-4 w-4 text-amber-500" /> {t('settings.persistInfo')}</p>
+            <p className="mt-1 text-sm text-text-muted">{t('settings.persistDesc')}</p>
           </div>
-          <Button onClick={handleSaveChanges}>Save changes</Button>
+          <Button onClick={handleSaveChanges}>{t('settings.save')}</Button>
         </CardContent>
       </Card>
 
       <Dialog
         open={thresholdConfirm}
         onOpenChange={setThresholdConfirm}
-        title="Change stop-buy threshold?"
-        description={`You're changing the threshold from ${profile.stopBuyThreshold} to ${pendingThreshold} days. This will immediately affect order generation and stop-buy alerts.`}
+        title={t('settings.confirmThresholdTitle')}
+        description={t('settings.thresholdDialogDesc').replace('{from}', String(profile.stopBuyThreshold)).replace('{to}', String(pendingThreshold))}
         footer={
           <>
             <Button variant="secondary" onClick={() => setThresholdConfirm(false)}>
-              Cancel
+              {t('settings.cancel')}
             </Button>
             <Button onClick={confirmThresholdChange}>
-              Yes, apply change
+              {t('settings.apply')}
             </Button>
           </>
         }

@@ -16,8 +16,10 @@ import { buildMockInventoryRows } from '@/lib/mockData';
 import { generateOrderRows } from '@/lib/orderAlgorithm';
 import { formatCurrency, formatNumber } from '@/lib/numberFormat';
 import { UI_CONSTANTS } from '@/lib/constants';
+import { useI18n } from '@/lib/i18n';
 
 export default function OrderPage() {
+  const { t } = useI18n();
   const importedRows = useImportMemoryStore((state) => state.importedRows);
   const hasImportedData = useImportMemoryStore((state) => state.hasImportedData);
   const addActivityEvent = useAppStore((state) => state.addActivityEvent);
@@ -67,23 +69,23 @@ export default function OrderPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone={hasImportedData ? 'success' : 'warning'}>{hasImportedData ? 'Generated from live CSV' : 'Generated from mock inventory'}</Badge>
-        <p className="text-sm text-text-muted">Suggestions include safety buffer logic.</p>
+        <Badge tone={hasImportedData ? 'success' : 'warning'}>{hasImportedData ? t('order.generatedLive') : t('order.generatedMock')}</Badge>
+        <p className="text-sm text-text-muted">{t('order.buffer')}</p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <CardTitle>Purchase order overview</CardTitle>
-            <CardDescription>All rows below are actionable and sorted by urgency.</CardDescription>
+            <CardTitle>{t('order.overview')}</CardTitle>
+            <CardDescription>{t('order.overviewDesc')}</CardDescription>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-3xl bg-amber-50 px-4 py-3 dark:bg-amber-500/10">
-              <p className="text-xs uppercase tracking-[0.18em] text-amber-900/70 dark:text-amber-100/70">Order value</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-amber-900/70 dark:text-amber-100/70">{t('order.value')}</p>
               <p className="mt-1 font-mono text-2xl font-semibold text-amber-950 dark:text-amber-100">{formatCurrency(totalValue)}</p>
             </div>
             <div className="rounded-3xl bg-forest-50 px-4 py-3 dark:bg-forest-900/20">
-              <p className="text-xs uppercase tracking-[0.18em] text-forest-800/70 dark:text-forest-100/70">Rows to review</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-forest-800/70 dark:text-forest-100/70">{t('order.rowsToReview')}</p>
               <p className="mt-1 font-mono text-2xl font-semibold">{formatNumber(orderRows.length)}</p>
             </div>
           </div>
@@ -95,9 +97,9 @@ export default function OrderPage() {
 
       {orderRows.length === 0 ? (
         <EmptyState
-          title="No order suggested"
-          description="Current stock appears sufficient for the next planning window. Import fresh data or lower the stop-buy threshold to reveal pending needs."
-          ctaLabel="Review forecast"
+          title={t('order.noneTitle')}
+          description={t('order.noneDesc')}
+          ctaLabel={t('order.reviewForecast')}
           ctaHref="/forecast"
         />
       ) : null}
@@ -105,12 +107,12 @@ export default function OrderPage() {
       <Dialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        title="Send order to supplier"
-        description="This action is mocked, but the confirmation flow is fully keyboard accessible."
+        title={t('order.sendSupplier')}
+        description={t('order.sendSupplierDesc')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t('order.cancel')}
             </Button>
             <Button
               disabled={!canConfirm}
@@ -124,24 +126,24 @@ export default function OrderPage() {
                 setDialogOpen(false);
               }}
             >
-              Confirm send
+              {t('order.confirm')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-text-muted">SmartPurchase will queue the current order, attach the forecast rationale, and route the request to the selected supplier profile.</p>
+          <p className="text-sm text-text-muted">{t('order.info')}</p>
           <div className="rounded-3xl border border-border bg-surface-muted p-4">
-            <p className="text-sm font-medium">Supplier payload</p>
+            <p className="text-sm font-medium">{t('order.payload')}</p>
             <p className="mt-1 text-sm text-text-muted">{orderRows.length} items, {formatCurrency(totalValue)} estimated value, threshold {threshold} days.</p>
           </div>
           {needsApproval ? (
             <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
-              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Approval required for high-value orders</p>
-              <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-100/80">Orders above {formatCurrency(1200)} require a reviewer name and a short reason.</p>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{t('order.approval')}</p>
+              <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-100/80">{t('order.approvalDesc')}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <Input value={approvalName} onChange={(event) => setApprovalName(event.target.value)} placeholder="Reviewer name" />
-                <Input value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Approval reason" />
+                <Input value={approvalName} onChange={(event) => setApprovalName(event.target.value)} placeholder={t('order.reviewer')} />
+                <Input value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder={t('order.reason')} />
               </div>
             </div>
           ) : null}

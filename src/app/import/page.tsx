@@ -10,8 +10,10 @@ import { CSVUploader } from '@/components/CSVUploader';
 import { FiscalReportUploader } from '@/components/FiscalReportUploader';
 import { useAppStore } from '@/store/useAppStore';
 import { useImportMemoryStore } from '@/store/useImportMemoryStore';
+import { useI18n } from '@/lib/i18n';
 
 export default function ImportPage() {
+  const { t } = useI18n();
   const importedRows = useImportMemoryStore((state) => state.importedRows);
   const hasImportedData = useImportMemoryStore((state) => state.hasImportedData);
   const previousImportedRows = useImportMemoryStore((state) => state.previousImportedRows);
@@ -23,17 +25,17 @@ export default function ImportPage() {
     const uniqueItems = new Set(importedRows.map((row) => row.item_name)).size;
     const uniqueDates = new Set(importedRows.map((row) => row.date)).size;
     return [
-      { label: 'Rows loaded', value: importedRows.length },
-      { label: 'Unique items', value: uniqueItems },
-      { label: 'Active days', value: uniqueDates }
+      { label: t('import.rowsLoaded'), value: importedRows.length },
+      { label: t('import.uniqueItems'), value: uniqueItems },
+      { label: t('import.activeDays'), value: uniqueDates }
     ];
-  }, [importedRows]);
+  }, [importedRows, t]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone="neutral">Client-side CSV parsing</Badge>
-        <p className="text-sm text-text-muted">Import, validate, and use data for forecasting.</p>
+        <Badge tone="neutral">{t('import.badge')}</Badge>
+        <p className="text-sm text-text-muted">{t('import.badgeDesc')}</p>
         <Button
           variant="secondary"
           size="sm"
@@ -47,22 +49,22 @@ export default function ImportPage() {
           }}
           disabled={previousImportedRows.length === 0}
         >
-          <Undo2 className="h-4 w-4" /> Rollback last import
+          <Undo2 className="h-4 w-4" /> {t('import.rollback')}
         </Button>
       </div>
 
       {!hasImportedData ? (
         <EmptyState
-          title="No CSV imported yet"
-          description="Upload a realistic CSV export from your POS or download the sample file to test the full workflow immediately."
-          ctaLabel="Download sample data"
+          title={t('import.noCsv')}
+          description={t('import.noCsvDesc')}
+          ctaLabel={t('import.downloadSample')}
           ctaHref="#uploader"
         />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Imported data summary</CardTitle>
-            <CardDescription>The dataset is ready for forecasting, ordering, and analytics.</CardDescription>
+            <CardTitle>{t('import.summary')}</CardTitle>
+            <CardDescription>{t('import.summaryDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-3">
             {stats.map((stat) => (
@@ -85,7 +87,7 @@ export default function ImportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Required columns</CardTitle>
+          <CardTitle>{t('import.requiredColumns')}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {['date', 'item_name', 'quantity_sold', 'unit', 'stock_current', 'stock_unit', 'cost_per_unit'].map((column) => (
@@ -98,19 +100,19 @@ export default function ImportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Import audit trail</CardTitle>
-          <CardDescription>Latest import events with quality score and skipped rows.</CardDescription>
+          <CardTitle>{t('import.audit')}</CardTitle>
+          <CardDescription>{t('import.auditDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {importHistory.length === 0 ? (
-            <p className="text-sm text-text-muted">No imports recorded yet.</p>
+            <p className="text-sm text-text-muted">{t('import.noRecords')}</p>
           ) : (
             importHistory.slice(0, 6).map((entry) => (
               <div key={entry.id} className="rounded-xl border border-border bg-surface-muted px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">{entry.sourceName}</p>
                   <Badge tone={entry.dataQualityScore >= 85 ? 'success' : entry.dataQualityScore >= 70 ? 'warning' : 'danger'}>
-                    Quality {entry.dataQualityScore}%
+                    {t('import.quality')} {entry.dataQualityScore}%
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-text-muted">
