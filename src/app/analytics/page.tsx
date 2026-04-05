@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Gross margin before vs after SmartPurchase</CardTitle>
+              <CardTitle>Gross margin before vs after Plateful</CardTitle>
               <CardDescription>Margin gains become visible in every category.</CardDescription>
             </CardHeader>
             <CardContent>

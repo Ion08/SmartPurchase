@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/useAppStore';
 import { useImportMemoryStore } from '@/store/useImportMemoryStore';
-import { buildCategoryComparison, buildSalesTrend, buildSparkline } from '@/lib/dashboardData';
+import { buildCategoryComparison, buildSalesTrend, buildSparkline, buildThreeDayIngredientNeedsFromSales, buildThreeDaySoldProductsPlan } from '@/lib/dashboardData';
 import { buildMockInventoryRows, getDashboardMetrics, getTopRiskItems, getUrgencyAlerts } from '@/lib/mockData';
 import { formatCurrency, formatNumber } from '@/lib/numberFormat';
 import { UI_CONSTANTS } from '@/lib/constants';
@@ -48,6 +48,8 @@ export default function DashboardPage() {
   const alerts = getUrgencyAlerts();
   const salesTrend = useMemo(() => buildSalesTrend(rows, 30), [rows]);
   const comparison = useMemo(() => buildCategoryComparison(rows), [rows]);
+  const soldProductsPlan = useMemo(() => buildThreeDaySoldProductsPlan(rows), [rows]);
+  const ingredientNeeds = useMemo(() => buildThreeDayIngredientNeedsFromSales(rows, soldProductsPlan), [rows, soldProductsPlan]);
   const topRiskItems = useMemo(() => getTopRiskItems(rows, 10), [rows]);
   const sparkline = buildSparkline(salesTrend.map((entry) => entry.sales));
 
@@ -163,6 +165,66 @@ export default function DashboardPage() {
         </Card>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle>Focus: produse vandute in urmatoarele 3 zile</CardTitle>
+                <CardDescription>Prioritatea este ce se va vinde (ex: croasante), apoi materia prima necesara.</CardDescription>
+              </div>
+              <Badge tone="success">Sales-first</Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {soldProductsPlan.map((day) => (
+                <div key={day.date} className="rounded-2xl border border-border bg-surface-muted p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{day.dayLabel}</p>
+                      <p className="text-xs text-text-muted">{day.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-text-muted">Total produse vandute (estimare)</p>
+                      <p className="font-mono text-sm font-semibold">{formatNumber(day.totalPredictedQty, 1)} buc/kg</p>
+                    </div>
+                  </div>
+                  {day.items.length === 0 ? (
+                    <p className="mt-2 text-xs text-text-muted">Nu exista produse cu volum estimat semnificativ pentru aceasta zi.</p>
+                  ) : (
+                    <div className="mt-2 space-y-1.5">
+                      {day.items.map((item) => (
+                        <div key={`${day.date}-${item.itemName}`} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-xs dark:bg-slate-950">
+                          <div>
+                            <p className="font-medium capitalize">{item.itemName}</p>
+                            <p className="text-[11px] text-text-muted">{item.category}</p>
+                          </div>
+                          <p className="font-mono">~{formatNumber(item.predictedQty, 1)} {item.unit}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div className="rounded-2xl border border-dashed border-border p-3">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">Materie prima necesara (derivata din produsele vandute)</p>
+                <div className="mt-2 space-y-2">
+                  {ingredientNeeds.map((day) => (
+                    <div key={`support-${day.date}`} className="rounded-xl bg-surface-muted px-3 py-2">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <p className="font-medium">{day.dayLabel}</p>
+                        <p className="font-mono">buy {formatNumber(day.totalBuyQty, 1)} • {formatCurrency(day.totalCost)}</p>
+                      </div>
+                      {day.items.length > 0 ? (
+                        <p className="mt-1 text-[11px] text-text-muted">
+                          {day.items.slice(0, 3).map((item) => `${item.ingredient} ${formatNumber(item.buyQty, 1)} ${item.unit}`).join(' • ')}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
