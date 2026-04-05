@@ -31,6 +31,13 @@ export function FiscalReportUploader() {
   const [error, setError] = useState<string | null>(null);
 
   const handleFiles = async (file: File) => {
+    // Check if restaurant is initialized
+    if (!restaurantId) {
+      setError('Restaurant initialization in progress. Please wait and try again.');
+      toast.error('Restaurant not initialized');
+      return;
+    }
+
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
       setError('File size too large. Maximum 10MB allowed.');
@@ -45,7 +52,7 @@ export function FiscalReportUploader() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('restaurantId', restaurantId || 'temp-restaurant-id');
+      formData.append('restaurantId', restaurantId);
 
       const response = await fetch('/api/fiscal-report', {
         method: 'POST',

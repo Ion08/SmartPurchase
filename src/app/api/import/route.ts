@@ -11,6 +11,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate restaurantId is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(restaurantId)) {
+      return NextResponse.json(
+        { error: 'Invalid restaurantId format. Please initialize your restaurant first.' },
+        { status: 400 }
+      );
+    }
+
     let rowsLoaded = 0;
     let duplicateRowsRemoved = 0;
     let invalidRowsSkipped = 0;
