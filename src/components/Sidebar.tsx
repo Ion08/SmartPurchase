@@ -7,17 +7,19 @@ import { BarChart3, ChevronLeft, ChevronRight, LayoutDashboard, LineChart, Packa
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/useAppStore';
+import { useI18n } from '@/lib/i18n';
 
 const navigation = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/import', label: 'Import', icon: UploadCloud },
-  { href: '/forecast', label: 'Forecast', icon: LineChart },
-  { href: '/order', label: 'Order', icon: PackageSearch },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings }
+  { href: '/dashboard', labelKey: 'app.dashboard', icon: LayoutDashboard },
+  { href: '/import', labelKey: 'app.import', icon: UploadCloud },
+  { href: '/forecast', labelKey: 'app.forecast', icon: LineChart },
+  { href: '/order', labelKey: 'app.order', icon: PackageSearch },
+  { href: '/analytics', labelKey: 'app.analytics', icon: BarChart3 },
+  { href: '/settings', labelKey: 'app.settings', icon: Settings }
 ] as const;
 
 export function Sidebar() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const locationName = useAppStore((state) => state.profile.locationName);
@@ -46,7 +48,7 @@ export function Sidebar() {
               </div>
             ) : null}
           </Link>
-          <Button variant="ghost" size="icon" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed((value) => !value)}>
+          <Button variant="ghost" size="icon" aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')} onClick={() => setCollapsed((value) => !value)}>
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
@@ -67,7 +69,7 @@ export function Sidebar() {
                 )}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed ? <span>{item.label}</span> : null}
+                {!collapsed ? <span>{t(item.labelKey)}</span> : null}
               </Link>
             );
           })}
@@ -76,10 +78,10 @@ export function Sidebar() {
           <div className={cn('rounded-xl border border-border bg-surface-muted p-3 text-text dark:text-forest-100', collapsed && 'p-2 text-center')}>
             {!collapsed ? (
               <>
-                <p className="text-sm font-semibold">Get started</p>
-                <p className="mt-1 text-xs text-text-muted">Import sales data to enable forecasting and orders.</p>
+                <p className="text-sm font-semibold">{t('sidebar.getStarted')}</p>
+                <p className="mt-1 text-xs text-text-muted">{t('sidebar.getStartedDesc')}</p>
                 <Button className="mt-2 w-full" size="sm" variant="secondary" asChild>
-                  <Link href="/import">Import CSV</Link>
+                  <Link href="/import">{t('sidebar.importCsv')}</Link>
                 </Button>
               </>
             ) : (
@@ -98,13 +100,13 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={t(item.labelKey)}
                 className={cn(
-                  'flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition-colors',
+                  'flex items-center justify-center rounded-2xl px-1 py-2 transition-colors',
                   active ? 'bg-forest-700 text-white' : 'text-text-muted hover:bg-forest-50 dark:hover:bg-white/5'
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
               </Link>
             );
           })}

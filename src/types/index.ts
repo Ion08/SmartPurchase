@@ -6,6 +6,7 @@ export type TrendDirection = 'up' | 'down' | 'flat';
 export type ForecastMode = 'item' | 'category';
 export type Category = 'Produce' | 'Dairy' | 'Meat' | 'Dry goods' | 'Beverages';
 export type HolidayRegion = 'MD' | 'RO' | 'GLOBAL';
+export type Language = 'en' | 'ro';
 
 export interface InventoryRecord {
   date: string;
@@ -134,6 +135,7 @@ export interface RestaurantProfile {
   address: string;
   type: RestaurantType;
   plan: PlanType;
+  language: Language;
   locationName: string;
   holidayRegion: HolidayRegion;
   stopBuyThreshold: number;

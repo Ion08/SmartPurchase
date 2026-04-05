@@ -102,7 +102,7 @@ export interface BuyPlanItem {
 }
 
 export interface BuyPlanDay {
-  dayLabel: 'Azi' | 'Maine' | 'Poimaine';
+  dayLabel: 'today' | 'tomorrow' | 'dayAfterTomorrow';
   date: string;
   totalQty: number;
   totalCost: number;
@@ -117,7 +117,7 @@ export interface SoldProductPlanItem {
 }
 
 export interface SoldProductPlanDay {
-  dayLabel: 'Azi' | 'Maine' | 'Poimaine';
+  dayLabel: 'today' | 'tomorrow' | 'dayAfterTomorrow';
   date: string;
   totalPredictedQty: number;
   items: SoldProductPlanItem[];
@@ -132,7 +132,7 @@ export interface IngredientNeedItem {
 }
 
 export interface IngredientNeedDay {
-  dayLabel: 'Azi' | 'Maine' | 'Poimaine';
+  dayLabel: 'today' | 'tomorrow' | 'dayAfterTomorrow';
   date: string;
   totalRequiredQty: number;
   totalBuyQty: number;
@@ -241,7 +241,7 @@ export function buildThreeDaySoldProductsPlan(rows: InventoryRecord[], limit = 6
   const marketRecent = marketSeries.slice(-Math.min(7, marketSeries.length)).map((entry) => entry.qty);
   const marketBaseline = Math.max(weightedAverage(marketRecent), 0.1);
 
-  const labels: Array<'Azi' | 'Maine' | 'Poimaine'> = ['Azi', 'Maine', 'Poimaine'];
+  const labels: Array<'today' | 'tomorrow' | 'dayAfterTomorrow'> = ['today', 'tomorrow', 'dayAfterTomorrow'];
   const today = startOfDay(new Date());
 
   return labels.map((dayLabel, index) => {
@@ -365,7 +365,7 @@ export function buildThreeDayBuyPlan(rows: InventoryRecord[]): BuyPlanDay[] {
     rows: rowsByItem.get(latest.item_name) ?? []
   }));
 
-  const labels: Array<'Azi' | 'Maine' | 'Poimaine'> = ['Azi', 'Maine', 'Poimaine'];
+  const labels: Array<'today' | 'tomorrow' | 'dayAfterTomorrow'> = ['today', 'tomorrow', 'dayAfterTomorrow'];
   const today = startOfDay(new Date());
 
   return labels.map((label, index) => {

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildAnalyticsData } from '@/lib/analyticsData';
+import { useI18n } from '@/lib/i18n';
 
 const COLORS = ['#1B4332', '#F59E0B', '#4F6F52', '#7FB069', '#D6A94A'];
 
@@ -21,6 +22,7 @@ function todayValue() {
 }
 
 export default function AnalyticsPage() {
+  const { t } = useI18n();
   const data = buildAnalyticsData();
   const [startDate, setStartDate] = useState(sixMonthsAgo());
   const [endDate, setEndDate] = useState(todayValue());
@@ -62,23 +64,23 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone="neutral">Six-month performance review</Badge>
-        <p className="text-sm text-text-muted">Core KPIs over the selected interval.</p>
+        <Badge tone="neutral">{t('analytics.badge')}</Badge>
+        <p className="text-sm text-text-muted">{t('analytics.kpi')}</p>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm text-text-muted">Date range</p>
-            <p className="mt-1 text-xl font-semibold">Analytics window</p>
+            <p className="text-sm text-text-muted">{t('analytics.dateRange')}</p>
+            <p className="mt-1 text-xl font-semibold">{t('analytics.window')}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:w-[28rem]">
             <div>
-              <label className="mb-2 block text-sm font-medium text-text">From</label>
+              <label className="mb-2 block text-sm font-medium text-text">{t('analytics.from')}</label>
               <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-text">To</label>
+              <label className="mb-2 block text-sm font-medium text-text">{t('analytics.to')}</label>
               <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
             </div>
           </div>
@@ -88,8 +90,8 @@ export default function AnalyticsPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
             <CardHeader>
-              <CardTitle>Monthly waste trend</CardTitle>
-              <CardDescription>Waste is trending down as purchasing becomes tighter.</CardDescription>
+              <CardTitle>{t('analytics.monthlyWaste')}</CardTitle>
+              <CardDescription>{t('analytics.monthlyWasteDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
@@ -114,8 +116,8 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Forecast accuracy over time</CardTitle>
-              <CardDescription>Accuracy improved as the model saw more purchase history.</CardDescription>
+              <CardTitle>{t('analytics.accuracy')}</CardTitle>
+              <CardDescription>{t('analytics.accuracyDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
@@ -134,8 +136,8 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Spend by category</CardTitle>
-              <CardDescription>Where the money goes every month.</CardDescription>
+              <CardTitle>{t('analytics.spend')}</CardTitle>
+              <CardDescription>{t('analytics.spendDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
@@ -156,8 +158,8 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Gross margin before vs after Plateful</CardTitle>
-              <CardDescription>Margin gains become visible in every category.</CardDescription>
+              <CardTitle>{t('analytics.margin')}</CardTitle>
+              <CardDescription>{t('analytics.marginDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">

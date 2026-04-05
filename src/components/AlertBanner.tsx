@@ -4,9 +4,11 @@ import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store/useAppStore';
+import { useI18n } from '@/lib/i18n';
 import type { AlertItem } from '@/types';
 
 export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
+  const { t } = useI18n();
   const dismissed = useAppStore((state) => state.dismissAlert);
   const setDismissed = useAppStore((state) => state.setDismissAlert);
 
@@ -25,19 +27,19 @@ export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold">Urgency alerts</p>
-              <Badge tone="warning">{criticalCount} urgent</Badge>
+              <p className="font-semibold">{t('alerts.urgency')}</p>
+              <Badge tone="warning">{criticalCount} {t('alerts.urgent')}</Badge>
             </div>
             <p className="mt-0.5 text-sm text-amber-900/80 dark:text-amber-100/80">
-              Stop-buy items and expiring inventory need attention before the next purchase run.
+              {t('alerts.desc')}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-center">
           <Button variant="secondary" size="sm" asChild>
-            <a href="/order">Review order list</a>
+            <a href="/order">{t('alerts.reviewOrder')}</a>
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Dismiss alert banner" onClick={() => setDismissed(true)}>
+          <Button variant="ghost" size="icon" aria-label={t('alerts.dismiss')} onClick={() => setDismissed(true)}>
             <X className="h-4 w-4" />
           </Button>
         </div>

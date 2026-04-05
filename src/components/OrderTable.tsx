@@ -10,11 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { OrderRow } from '@/types';
 import { formatCurrency } from '@/lib/numberFormat';
+import { useI18n } from '@/lib/i18n';
 
 type SortField = 'item_name' | 'priority' | 'estimated_cost' | 'current_stock';
 type SortOrder = 'asc' | 'desc';
 
 export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderRow[]; onPrintAction: () => void; onSendAction: () => void }) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('priority');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -76,11 +78,11 @@ export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderR
       <Card>
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <CardTitle>Order suggestion</CardTitle>
-            <CardDescription>Generated from forecast and current stock.</CardDescription>
+            <CardTitle>{t('ordertable.title')}</CardTitle>
+            <CardDescription>{t('ordertable.desc')}</CardDescription>
           </div>
           <div className="rounded-xl bg-surface-muted px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.12em] text-text-muted">Estimated order value</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-text-muted">{t('ordertable.estimatedValue')}</p>
             <p className="mt-1 font-mono text-xl font-semibold text-text">{formatCurrency(total)}</p>
           </div>
         </CardHeader>
@@ -89,7 +91,7 @@ export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderR
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-text-muted" />
               <Input
-                placeholder="Search items by name or category..."
+                placeholder={t('ordertable.search')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="border-0 bg-transparent px-2 py-1 focus:outline-none focus:ring-0"
@@ -103,25 +105,25 @@ export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderR
                   <TableRow>
                     <TableHead>
                       <button onClick={() => toggleSort('item_name')} className="flex items-center gap-2 hover:text-text">
-                        Item {sortField === 'item_name' && <ArrowUpDown className="h-3 w-3" />}
+                        {t('ordertable.item')} {sortField === 'item_name' && <ArrowUpDown className="h-3 w-3" />}
                       </button>
                     </TableHead>
                     <TableHead>
                       <button onClick={() => toggleSort('current_stock')} className="flex items-center gap-2 hover:text-text">
-                        Current stock {sortField === 'current_stock' && <ArrowUpDown className="h-3 w-3" />}
+                        {t('ordertable.currentStock')} {sortField === 'current_stock' && <ArrowUpDown className="h-3 w-3" />}
                       </button>
                     </TableHead>
-                    <TableHead>Forecasted need</TableHead>
-                    <TableHead>Recommended</TableHead>
-                    <TableHead>Unit</TableHead>
+                    <TableHead>{t('ordertable.forecastNeed')}</TableHead>
+                    <TableHead>{t('ordertable.recommended')}</TableHead>
+                    <TableHead>{t('ordertable.unit')}</TableHead>
                     <TableHead>
                       <button onClick={() => toggleSort('estimated_cost')} className="flex items-center gap-2 hover:text-text">
-                        Estimated cost {sortField === 'estimated_cost' && <ArrowUpDown className="h-3 w-3" />}
+                        {t('ordertable.estimatedCost')} {sortField === 'estimated_cost' && <ArrowUpDown className="h-3 w-3" />}
                       </button>
                     </TableHead>
                     <TableHead>
                       <button onClick={() => toggleSort('priority')} className="flex items-center gap-2 hover:text-text">
-                        Priority {sortField === 'priority' && <ArrowUpDown className="h-3 w-3" />}
+                        {t('ordertable.priority')} {sortField === 'priority' && <ArrowUpDown className="h-3 w-3" />}
                       </button>
                     </TableHead>
                   </TableRow>
@@ -133,7 +135,7 @@ export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderR
                         <div className="flex flex-col gap-1">
                           <span className="font-medium text-text">{row.item_name}</span>
                           <div className="flex flex-wrap items-center gap-2">
-                            {row.stop_buy ? <Badge tone="danger">Stop-buy</Badge> : null}
+                            {row.stop_buy ? <Badge tone="danger">{t('ordertable.stopBuy')}</Badge> : null}
                             <span className="text-xs text-text-muted">{row.category}</span>
                           </div>
                         </div>
@@ -153,8 +155,8 @@ export function OrderTable({ rows, onPrintAction, onSendAction }: { rows: OrderR
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <Button variant="secondary" onClick={onPrintAction}>Export Order to PDF</Button>
-            <Button onClick={onSendAction}>Send to Supplier</Button>
+            <Button variant="secondary" onClick={onPrintAction}>{t('ordertable.exportPdf')}</Button>
+            <Button onClick={onSendAction}>{t('ordertable.sendSupplier')}</Button>
           </div>
         </CardContent>
       </Card>

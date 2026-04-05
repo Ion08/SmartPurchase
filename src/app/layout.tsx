@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
 
 export const metadata: Metadata = {
-  title: 'SmartPurchase HoReCa',
+  title: 'Plateful',
   description: 'AI-powered procurement optimization for restaurants, cloud kitchens, and food chains.'
 };
 

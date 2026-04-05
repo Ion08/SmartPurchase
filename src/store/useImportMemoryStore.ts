@@ -25,11 +25,10 @@ export const useImportMemoryStore = create<ImportMemoryState>()(
       importHistory: [],
       setImportedRows: (rows, meta) =>
         set((state) => {
-          const importedAt = rows.length > 0 ? new Date().toISOString() : null;
           const historyEntry: ImportAuditEntry | null = rows.length > 0
             ? {
               id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              importedAt,
+              importedAt: new Date().toISOString(),
               sourceName: meta?.sourceName ?? 'csv-upload',
               rowsLoaded: rows.length,
               duplicateRowsRemoved: meta?.duplicateRowsRemoved ?? 0,
@@ -42,7 +41,7 @@ export const useImportMemoryStore = create<ImportMemoryState>()(
             previousImportedRows: state.importedRows,
             importedRows: rows,
             hasImportedData: rows.length > 0,
-            lastImportedAt: importedAt,
+            lastImportedAt: rows.length > 0 ? new Date().toISOString() : null,
             importHistory: historyEntry ? [historyEntry, ...state.importHistory].slice(0, 25) : state.importHistory
           };
         }),
