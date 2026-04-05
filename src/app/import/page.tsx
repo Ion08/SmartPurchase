@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/EmptyState';
 import { CSVUploader } from '@/components/CSVUploader';
+import { FiscalReportUploader } from '@/components/FiscalReportUploader';
 import { useAppStore } from '@/store/useAppStore';
 import { useImportMemoryStore } from '@/store/useImportMemoryStore';
 
@@ -76,6 +77,10 @@ export default function ImportPage() {
 
       <div id="uploader">
         <CSVUploader />
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <FiscalReportUploader />
       </div>
 
       <Card>

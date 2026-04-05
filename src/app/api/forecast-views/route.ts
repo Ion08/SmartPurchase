@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, queryOne } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // GET /api/forecast-views?restaurantId=
 export async function GET(request: NextRequest) {
@@ -11,22 +11,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId required' }, { status: 400 });
     }
 
-    const sql = `
-      SELECT 
-        id,
-        restaurant_id as "restaurantId",
-        name,
-        selected_category as "selectedCategory",
-        forecast_mode as "forecastMode",
-        focus_item as "focusItem",
-        created_at as "createdAt",
-        updated_at as "updatedAt"
-      FROM forecast_views
-      WHERE restaurant_id = $1
-      ORDER BY updated_at DESC
-    `;
-    const views = await queryMany(sql, [restaurantId]);
-    return NextResponse.json(views);
+    const { data: views, error } = await supabase
+      .from('forecast_views')
+      .select('id, restaurant_id, name, selected_category, forecast_mode, focus_item, created_at, updated_at')
+      .eq('restaurant_id', restaurantId)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    // Transform to camelCase
+    const transformedViews = views?.map(view => ({
+      id: view.id,
+      restaurantId: view.restaurant_id,
+      name: view.name,
+      selectedCategory: view.selected_category,
+      forecastMode: view.forecast_mode,
+      focusItem: view.focus_item,
+      createdAt: view.created_at,
+      updatedAt: view.updated_at,
+    })) || [];
+
+    return NextResponse.json(transformedViews);
   } catch (error) {
     console.error('Forecast views GET error:', error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -44,27 +51,45 @@ export async function POST(request: NextRequest) {
     }
 
     // Delete existing with same name
-    await queryOne(`DELETE FROM forecast_views WHERE restaurant_id = $1 AND LOWER(name) = LOWER($2)`, [restaurantId, name]);
+    await supabase
+      .from('forecast_views')
+      .delete()
+      .eq('restaurant_id', restaurantId)
+      .ilike('name', name);
 
     // Insert new view
-    const sql = `
-      INSERT INTO forecast_views (restaurant_id, name, selected_category, forecast_mode, focus_item)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-    `;
-    const view = await queryOne(sql, [restaurantId, name, selectedCategory || 'All categories', forecastMode || 'item', focusItem || null]);
+    const { data: view, error: insertError } = await supabase
+      .from('forecast_views')
+      .insert({
+        restaurant_id: restaurantId,
+        name,
+        selected_category: selectedCategory || 'All categories',
+        forecast_mode: forecastMode || 'item',
+        focus_item: focusItem || null,
+      })
+      .select()
+      .single();
 
-    // Cleanup old views, keep only 12
-    const cleanupSql = `
-      DELETE FROM forecast_views
-      WHERE id IN (
-        SELECT id FROM forecast_views
-        WHERE restaurant_id = $1
-        ORDER BY updated_at DESC
-        OFFSET 12
-      )
-    `;
-    await queryOne(cleanupSql, [restaurantId]);
+    if (insertError) {
+      throw new Error(`Insert error: ${insertError.message}`);
+    }
+
+    // Cleanup old views - get IDs to keep
+    const { data: viewsToKeep } = await supabase
+      .from('forecast_views')
+      .select('id')
+      .eq('restaurant_id', restaurantId)
+      .order('updated_at', { ascending: false })
+      .limit(12);
+
+    if (viewsToKeep && viewsToKeep.length > 0) {
+      const keepIds = viewsToKeep.map(v => v.id);
+      await supabase
+        .from('forecast_views')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+        .not('id', 'in', `(${keepIds.join(',')})`);
+    }
 
     return NextResponse.json(view);
   } catch (error) {
@@ -83,7 +108,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'id required' }, { status: 400 });
     }
 
-    await queryOne(`DELETE FROM forecast_views WHERE id = $1`, [id]);
+    const { error } = await supabase
+      .from('forecast_views')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Delete error: ${error.message}`);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Forecast views DELETE error:', error);

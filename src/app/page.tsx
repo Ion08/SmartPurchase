@@ -4,9 +4,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAppStore } from '@/store/useAppStore';
+import { toast } from 'sonner';
 
 function CountUp({ end, prefix = '', suffix = '' }: { end: number; prefix?: string; suffix?: string }) {
   const [value, setValue] = useState(0);
@@ -36,6 +39,71 @@ function CountUp({ end, prefix = '', suffix = '' }: { end: number; prefix?: stri
 }
 
 export default function LandingPage() {
+  const router = useRouter();
+  const setRestaurantId = useAppStore((state) => state.setRestaurantId);
+  const setProfile = useAppStore((state) => state.setProfile);
+  
+  const [restaurantId, setRestaurantIdInput] = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!restaurantId.trim()) {
+      toast.error('Please enter a restaurant ID');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/restaurant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantId: restaurantId.trim(),
+          name: restaurantName.trim() || 'My Restaurant',
+          address: 'Unknown Address'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to process restaurant');
+      }
+
+      // Store restaurant ID in app state
+      setRestaurantId(result.restaurant.id);
+      
+      // Store profile data
+      setProfile({
+        name: result.restaurant.name,
+        address: result.restaurant.address,
+        type: result.restaurant.type,
+        plan: result.restaurant.plan,
+        locationName: result.restaurant.locationName,
+        holidayRegion: result.restaurant.holidayRegion,
+        stopBuyThreshold: result.restaurant.stopBuyThreshold,
+        notifications: result.restaurant.notifications
+      });
+
+      toast.success(result.isNew 
+        ? `Restaurant "${result.restaurant.name}" created successfully` 
+        : `Welcome back, ${result.restaurant.name}!`
+      );
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to process restaurant';
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(27,67,50,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_24%),linear-gradient(180deg,#F8F4E3_0%,#FFFDF8_100%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(27,67,50,0.35),transparent_28%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_24%),linear-gradient(180deg,#04100C_0%,#091512_100%)]">
       <div className="absolute left-[-10rem] top-24 h-72 w-72 rounded-full bg-forest-700/10 blur-3xl" />
@@ -91,16 +159,28 @@ export default function LandingPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-5 p-6">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Work email</label>
-                  <input className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" placeholder="you@restaurant.md" />
+                  <label className="mb-2 block text-sm font-medium text-text">Restaurant ID</label>
+                  <input 
+                    className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" 
+                    placeholder="Enter your restaurant ID"
+                    value={restaurantId}
+                    onChange={(e) => setRestaurantIdInput(e.target.value)}
+                    disabled={isLoading}
+                  />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Company name</label>
-                  <input className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" placeholder="La Furculiță" />
+                  <label className="mb-2 block text-sm font-medium text-text">Restaurant name</label>
+                  <input 
+                    className="h-11 w-full rounded-2xl border border-border bg-surface-elevated px-4 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-forest-500" 
+                    placeholder="La Furculiță"
+                    value={restaurantName}
+                    onChange={(e) => setRestaurantName(e.target.value)}
+                    disabled={isLoading}
+                  />
                 </div>
-              </div>
+              </form>
               <div className="grid gap-3 rounded-[1.75rem] border border-forest-100 bg-forest-50/70 p-4 dark:border-forest-700/30 dark:bg-forest-900/20">
                 {[
                   'Predict demand 30 days ahead',
@@ -113,10 +193,14 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <Button className="w-full" size="lg" asChild>
-                <Link href="/dashboard">
-                  Start free pilot <ArrowRight className="h-4 w-4" />
-                </Link>
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Start free pilot'} 
+                {!isLoading && <ArrowRight className="h-4 w-4" />}
               </Button>
             </CardContent>
           </Card>

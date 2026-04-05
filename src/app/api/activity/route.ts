@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, queryOne } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // GET /api/activity?restaurantId=&limit=
 export async function GET(request: NextRequest) {
@@ -12,21 +12,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId required' }, { status: 400 });
     }
 
-    const sql = `
-      SELECT 
-        id,
-        restaurant_id as "restaurantId",
-        event_type as "eventType",
-        title,
-        details,
-        created_at as "createdAt"
-      FROM activity_events
-      WHERE restaurant_id = $1
-      ORDER BY created_at DESC
-      LIMIT $2
-    `;
-    const events = await queryMany(sql, [restaurantId, limit]);
-    return NextResponse.json(events);
+    const { data: events, error } = await supabase
+      .from('activity_events')
+      .select('id, restaurant_id, event_type, title, details, created_at')
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    // Transform to camelCase
+    const transformedEvents = events?.map(event => ({
+      id: event.id,
+      restaurantId: event.restaurant_id,
+      eventType: event.event_type,
+      title: event.title,
+      details: event.details,
+      createdAt: event.created_at,
+    })) || [];
+
+    return NextResponse.json(transformedEvents);
   } catch (error) {
     console.error('Activity GET error:', error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -43,12 +50,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const sql = `
-      INSERT INTO activity_events (restaurant_id, event_type, title, details)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    const event = await queryOne(sql, [restaurantId, eventType, title, details || null]);
+    const { data: event, error } = await supabase
+      .from('activity_events')
+      .insert({
+        restaurant_id: restaurantId,
+        event_type: eventType,
+        title,
+        details: details || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Insert error: ${error.message}`);
+    }
+
     return NextResponse.json(event);
   } catch (error) {
     console.error('Activity POST error:', error);
