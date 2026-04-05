@@ -18,6 +18,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId is required' }, { status: 400 });
     }
 
+    // Validate restaurantId is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(restaurantId)) {
+      return NextResponse.json(
+        { error: 'Invalid restaurantId format. Please initialize your restaurant first.' },
+        { status: 400 }
+      );
+    }
+
     // Validate file type
     const allowedTypes = [
       'application/pdf',

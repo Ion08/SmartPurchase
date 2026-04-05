@@ -3,10 +3,12 @@
 import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
+import { useRestaurantInit } from '@/hooks/useRestaurantInit';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLanding = pathname === '/';
+  useRestaurantInit(); // Initialize restaurant ID on app load
 
   if (isLanding) {
     return <>{children}</>;

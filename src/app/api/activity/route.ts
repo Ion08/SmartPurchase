@@ -12,6 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId required' }, { status: 400 });
     }
 
+    // Validate restaurantId is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(restaurantId)) {
+      return NextResponse.json(
+        { error: 'Invalid restaurantId format. Please initialize your restaurant first.' },
+        { status: 400 }
+      );
+    }
+
     const { data: events, error } = await supabase
       .from('activity_events')
       .select('id, restaurant_id, event_type, title, details, created_at')
