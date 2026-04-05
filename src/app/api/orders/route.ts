@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, queryOne } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // GET /api/orders?restaurantId=&status=
 export async function GET(request: NextRequest) {
@@ -12,55 +12,73 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'restaurantId required' }, { status: 400 });
     }
 
-    let sql = `
-      SELECT 
-        o.id,
-        o.restaurant_id as "restaurantId",
-        o.order_date as "orderDate",
-        o.status,
-        o.total_estimated_cost as "totalEstimatedCost",
-        o.notes,
-        o.created_at as "createdAt",
-        o.updated_at as "updatedAt",
-        COALESCE(
-          jsonb_agg(
-            jsonb_build_object(
-              'id', oi.id,
-              'itemId', oi.item_id,
-              'currentStock', oi.current_stock,
-              'forecastedNeed', oi.forecasted_need,
-              'recommendedOrderQty', oi.recommended_order_qty,
-              'estimatedCost', oi.estimated_cost,
-              'priority', oi.priority,
-              'stopBuy', oi.stop_buy,
-              'daysOfStock', oi.days_of_stock,
-              'item', jsonb_build_object(
-                'id', i.id,
-                'itemName', i.item_name,
-                'unit', i.unit,
-                'category', jsonb_build_object('id', c.id, 'name', c.name)
-              )
-            ) ORDER BY oi.id
-          ) FILTER (WHERE oi.id IS NOT NULL),
-          '[]'::jsonb
-        ) as "orderItems"
-      FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      LEFT JOIN items i ON oi.item_id = i.id
-      LEFT JOIN categories c ON i.category_id = c.id
-      WHERE o.restaurant_id = $1
-    `;
-    const params: (string | null)[] = [restaurantId];
+    let query = supabase
+      .from('orders')
+      .select(`
+        id,
+        restaurant_id,
+        order_date,
+        status,
+        total_estimated_cost,
+        notes,
+        created_at,
+        updated_at,
+        order_items (
+          id,
+          item_id,
+          current_stock,
+          forecasted_need,
+          recommended_order_qty,
+          estimated_cost,
+          priority,
+          stop_buy,
+          days_of_stock,
+          items (
+            id,
+            item_name,
+            unit,
+            categories (id, name)
+          )
+        )
+      `)
+      .eq('restaurant_id', restaurantId)
+      .order('order_date', { ascending: false });
 
     if (status) {
-      sql += ` AND o.status = $2`;
-      params.push(status);
+      query = query.eq('status', status);
     }
 
-    sql += ` GROUP BY o.id ORDER BY o.order_date DESC`;
+    const { data: orders, error } = await query;
 
-    const orders = await queryMany(sql, params);
-    return NextResponse.json(orders);
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    // Transform to camelCase
+    const transformedOrders = orders?.map(order => ({
+      id: order.id,
+      restaurantId: order.restaurant_id,
+      orderDate: order.order_date,
+      status: order.status,
+      totalEstimatedCost: order.total_estimated_cost,
+      notes: order.notes,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      orderItems: order.order_items?.map((item: Record<string, unknown>) => ({
+        id: item.id,
+        itemId: item.item_id,
+        currentStock: item.current_stock,
+        forecastedNeed: item.forecasted_need,
+        recommendedOrderQty: item.recommended_order_qty,
+        estimatedCost: item.estimated_cost,
+        priority: item.priority,
+        stopBuy: item.stop_buy,
+        daysOfStock: item.days_of_stock,
+        item: item.items,
+      })) || [],
+    })) || [];
+
+    return NextResponse.json(transformedOrders);
   } catch (error) {
     console.error('Orders GET error:', error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -80,15 +98,22 @@ export async function POST(request: NextRequest) {
     const totalCost = items.reduce((sum: number, item: { estimatedCost?: number }) => sum + (item.estimatedCost || 0), 0);
 
     // Insert order
-    const orderSql = `
-      INSERT INTO orders (restaurant_id, notes, total_estimated_cost)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    const order = await queryOne(orderSql, [restaurantId, notes || null, totalCost]);
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        restaurant_id: restaurantId,
+        notes: notes || null,
+        total_estimated_cost: totalCost,
+      })
+      .select()
+      .single();
+
+    if (orderError || !order) {
+      throw new Error(`Failed to create order: ${orderError?.message}`);
+    }
 
     // Insert order items
-    for (const item of items as Array<{
+    const orderItemsData = items.map((item: {
       itemId: string;
       currentStock: number;
       forecastedNeed: number;
@@ -97,60 +122,89 @@ export async function POST(request: NextRequest) {
       priority: string;
       stopBuy: boolean;
       daysOfStock: number;
-    }>) {
-      const itemSql = `
-        INSERT INTO order_items (order_id, item_id, current_stock, forecasted_need, recommended_order_qty, estimated_cost, priority, stop_buy, days_of_stock)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `;
-      await queryOne(itemSql, [
-        order.id,
-        item.itemId,
-        item.currentStock,
-        item.forecastedNeed,
-        item.recommendedOrderQty,
-        item.estimatedCost,
-        item.priority,
-        item.stopBuy,
-        item.daysOfStock
-      ]);
+    }) => ({
+      order_id: order.id,
+      item_id: item.itemId,
+      current_stock: item.currentStock,
+      forecasted_need: item.forecastedNeed,
+      recommended_order_qty: item.recommendedOrderQty,
+      estimated_cost: item.estimatedCost,
+      priority: item.priority,
+      stop_buy: item.stopBuy,
+      days_of_stock: item.daysOfStock,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItemsData);
+
+    if (itemsError) {
+      console.error('Error inserting order items:', itemsError);
     }
 
-    // Return full order with items
-    const fullOrderSql = `
-      SELECT 
-        o.*,
-        COALESCE(
-          jsonb_agg(
-            jsonb_build_object(
-              'id', oi.id,
-              'itemId', oi.item_id,
-              'currentStock', oi.current_stock,
-              'forecastedNeed', oi.forecasted_need,
-              'recommendedOrderQty', oi.recommended_order_qty,
-              'estimatedCost', oi.estimated_cost,
-              'priority', oi.priority,
-              'stopBuy', oi.stop_buy,
-              'daysOfStock', oi.days_of_stock,
-              'item', jsonb_build_object(
-                'id', i.id,
-                'itemName', i.item_name,
-                'unit', i.unit,
-                'category', jsonb_build_object('id', c.id, 'name', c.name)
-              )
-            ) ORDER BY oi.id
-          ) FILTER (WHERE oi.id IS NOT NULL),
-          '[]'::jsonb
-        ) as "orderItems"
-      FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      LEFT JOIN items i ON oi.item_id = i.id
-      LEFT JOIN categories c ON i.category_id = c.id
-      WHERE o.id = $1
-      GROUP BY o.id
-    `;
-    const fullOrder = await queryOne(fullOrderSql, [order.id]);
+    // Return full order
+    const { data: fullOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        restaurant_id,
+        order_date,
+        status,
+        total_estimated_cost,
+        notes,
+        created_at,
+        updated_at,
+        order_items (
+          id,
+          item_id,
+          current_stock,
+          forecasted_need,
+          recommended_order_qty,
+          estimated_cost,
+          priority,
+          stop_buy,
+          days_of_stock,
+          items (
+            id,
+            item_name,
+            unit,
+            categories (id, name)
+          )
+        )
+      `)
+      .eq('id', order.id)
+      .single();
 
-    return NextResponse.json(fullOrder);
+    if (fetchError || !fullOrder) {
+      // Return basic order if full fetch fails
+      return NextResponse.json(order);
+    }
+
+    // Transform to camelCase
+    const transformedOrder = {
+      id: fullOrder.id,
+      restaurantId: fullOrder.restaurant_id,
+      orderDate: fullOrder.order_date,
+      status: fullOrder.status,
+      totalEstimatedCost: fullOrder.total_estimated_cost,
+      notes: fullOrder.notes,
+      createdAt: fullOrder.created_at,
+      updatedAt: fullOrder.updated_at,
+      orderItems: fullOrder.order_items?.map((item: Record<string, unknown>) => ({
+        id: item.id,
+        itemId: item.item_id,
+        currentStock: item.current_stock,
+        forecastedNeed: item.forecasted_need,
+        recommendedOrderQty: item.recommended_order_qty,
+        estimatedCost: item.estimated_cost,
+        priority: item.priority,
+        stopBuy: item.stop_buy,
+        daysOfStock: item.days_of_stock,
+        item: item.items,
+      })) || [],
+    };
+
+    return NextResponse.json(transformedOrder);
   } catch (error) {
     console.error('Orders POST error:', error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -167,13 +221,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'id required' }, { status: 400 });
     }
 
-    const sql = `
-      UPDATE orders 
-      SET status = $2, notes = $3, updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `;
-    const order = await queryOne(sql, [id, status, notes]);
+    const updates: Record<string, unknown> = {};
+    if (status) updates.status = status;
+    if (notes !== undefined) updates.notes = notes;
+    updates.updated_at = new Date().toISOString();
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Update error: ${error.message}`);
+    }
 
     return NextResponse.json(order);
   } catch (error) {

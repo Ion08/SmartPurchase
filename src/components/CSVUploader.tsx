@@ -1,10 +1,9 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { Download, FileUp, Loader2, UploadCloud } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { FileUp, Loader2, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseInventoryCsv } from '@/lib/csvParser';
-import { buildSampleCsv } from '@/lib/mockData';
 import { useImportMemoryStore } from '@/store/useImportMemoryStore';
 import { useAppStore } from '@/store/useAppStore';
 import { CSV_CONSTANTS, UI_CONSTANTS } from '@/lib/constants';
@@ -24,8 +23,6 @@ export function CSVUploader() {
   const [isParsing, setIsParsing] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-
-  const sampleCsv = useMemo(() => buildSampleCsv(), []);
 
   const handleFiles = async (file: File) => {
     // Validate file size
@@ -67,17 +64,6 @@ export function CSVUploader() {
     }, UI_CONSTANTS.loadingDelay);
   };
 
-  const downloadSample = () => {
-    const blob = new Blob([sampleCsv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'smartpurchase-sample-data.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success(t('import.sampleDownloaded'));
-  };
-
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <Card className="border-border/80">
@@ -107,9 +93,6 @@ export function CSVUploader() {
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
               <Button type="button" onClick={() => inputRef.current?.click()}>
                 <FileUp className="h-4 w-4" /> {t('import.uploadFile')}
-              </Button>
-              <Button type="button" variant="secondary" onClick={downloadSample}>
-                <Download className="h-4 w-4" /> {t('import.downloadSampleCsv')}
               </Button>
             </div>
             <input

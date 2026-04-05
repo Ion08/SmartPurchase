@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, queryOne } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // POST /api/import - bulk import inventory records
 export async function POST(request: NextRequest) {
@@ -35,50 +35,77 @@ export async function POST(request: NextRequest) {
       const normalizedItemName = itemName.toLowerCase().trim();
 
       // Find or create item (case-insensitive)
-      let item = await queryOne(
-        `SELECT * FROM items WHERE restaurant_id = $1 AND LOWER(item_name) = LOWER($2)`,
-        [restaurantId, normalizedItemName]
-      );
+      const { data: existingItem, error: findError } = await supabase
+        .from('items')
+        .select('id, item_name, cost_per_unit')
+        .eq('restaurant_id', restaurantId)
+        .ilike('item_name', normalizedItemName)
+        .single();
 
-      if (!item) {
-        // Get or create default category
-        let category = await queryOne(`SELECT * FROM categories WHERE name = 'Dry goods'`);
-        if (!category) {
-          category = await queryOne(
-            `INSERT INTO categories (name) VALUES ('Dry goods') RETURNING *`
-          );
+      let itemId: string;
+      let itemCostPerUnit: number;
+
+      if (existingItem) {
+        itemId = existingItem.id;
+        itemCostPerUnit = existingItem.cost_per_unit;
+      } else {
+        // Get default category
+        const { data: category } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('name', 'Dry goods')
+          .single();
+
+        const { data: newItem, error: insertError } = await supabase
+          .from('items')
+          .insert({
+            restaurant_id: restaurantId,
+            item_name: normalizedItemName,
+            category_id: category?.id,
+            unit: unit || 'pcs',
+            stock_unit: stockUnit || 'pcs',
+            cost_per_unit: costPerUnit || 0,
+            current_stock: 0,
+            avg_daily_sales: 0,
+          })
+          .select('id')
+          .single();
+
+        if (insertError || !newItem) {
+          invalidRowsSkipped++;
+          continue;
         }
-
-        item = await queryOne(
-          `INSERT INTO items (restaurant_id, item_name, category_id, unit, stock_unit, cost_per_unit, current_stock, avg_daily_sales)
-           VALUES ($1, $2, $3, $4, $5, $6, 0, 0) RETURNING *`,
-          [restaurantId, normalizedItemName, category.id, unit || 'pcs', stockUnit || 'pcs', costPerUnit || 0]
-        );
+        
+        itemId = newItem.id;
+        itemCostPerUnit = costPerUnit || 0;
       }
 
       // Check for duplicates
-      const key = `${restaurantId}|${item.id}|${recordDate}`;
+      const key = `${restaurantId}|${itemId}|${recordDate}`;
       if (seen.has(key)) {
         duplicateRowsRemoved++;
         continue;
       }
       seen.add(key);
 
-      // Upsert inventory record
-      const updateResult = await queryOne(
-        `UPDATE inventory_records 
-         SET quantity_sold = $4, stock_current = $5, cost_per_unit = $6, updated_at = NOW()
-         WHERE restaurant_id = $1 AND item_id = $2 AND record_date = $3
-         RETURNING *`,
-        [restaurantId, item.id, recordDate, quantitySold || 0, stockCurrent || 0, costPerUnit || item.cost_per_unit]
-      );
+      // Upsert inventory record using upsert
+      const { error: upsertError } = await supabase
+        .from('inventory_records')
+        .upsert({
+          restaurant_id: restaurantId,
+          item_id: itemId,
+          record_date: recordDate,
+          quantity_sold: quantitySold || 0,
+          stock_current: stockCurrent || 0,
+          cost_per_unit: costPerUnit || itemCostPerUnit,
+        }, {
+          onConflict: 'restaurant_id,item_id,record_date',
+        });
 
-      if (!updateResult) {
-        await queryOne(
-          `INSERT INTO inventory_records (restaurant_id, item_id, record_date, quantity_sold, stock_current, cost_per_unit)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [restaurantId, item.id, recordDate, quantitySold || 0, stockCurrent || 0, costPerUnit || item.cost_per_unit]
-        );
+      if (upsertError) {
+        console.error('Upsert error:', upsertError);
+        invalidRowsSkipped++;
+        continue;
       }
 
       rowsLoaded++;
@@ -89,18 +116,32 @@ export async function POST(request: NextRequest) {
     const dataQualityScore = Math.max(0, Math.min(100, Math.round(100 - qualityLoss)));
 
     // Create audit log
-    const audit = await queryOne(
-      `INSERT INTO import_audits (restaurant_id, source_name, rows_loaded, duplicate_rows_removed, invalid_rows_skipped, data_quality_score)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [restaurantId, sourceName || 'CSV Import', rowsLoaded, duplicateRowsRemoved, invalidRowsSkipped, dataQualityScore]
-    );
+    const { data: audit, error: auditError } = await supabase
+      .from('import_audits')
+      .insert({
+        restaurant_id: restaurantId,
+        source_name: sourceName || 'CSV Import',
+        rows_loaded: rowsLoaded,
+        duplicate_rows_removed: duplicateRowsRemoved,
+        invalid_rows_skipped: invalidRowsSkipped,
+        data_quality_score: dataQualityScore,
+      })
+      .select()
+      .single();
+
+    if (auditError) {
+      console.error('Audit error:', auditError);
+    }
 
     // Log activity
-    await queryOne(
-      `INSERT INTO activity_events (restaurant_id, event_type, title, details)
-       VALUES ($1, $2, $3, $4)`,
-      [restaurantId, 'import', `Imported ${rowsLoaded} records`, `Quality score: ${dataQualityScore}%`]
-    );
+    await supabase
+      .from('activity_events')
+      .insert({
+        restaurant_id: restaurantId,
+        event_type: 'import',
+        title: `Imported ${rowsLoaded} records`,
+        details: `Quality score: ${dataQualityScore}%`,
+      });
 
     return NextResponse.json({
       audit,

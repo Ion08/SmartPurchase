@@ -154,4 +154,5 @@ export interface AppState {
   startDate: string;
   endDate: string;
   dismissAlert: boolean;
+  restaurantId: string | null;
 }

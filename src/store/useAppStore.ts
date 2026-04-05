@@ -34,6 +34,7 @@ type AppStore = AppState & {
   setDateRange: (startDate: string, endDate: string) => void;
   setDismissAlert: (dismissAlert: boolean) => void;
   setPlan: (plan: PlanType) => void;
+  setRestaurantId: (restaurantId: string | null) => void;
   saveForecastView: (view: { name: string; selectedCategory: string; forecastMode: ForecastMode; focusItem: string }) => void;
   deleteForecastView: (id: string) => void;
   addActivityEvent: (event: Omit<ActivityEvent, 'id' | 'at'>) => void;
@@ -52,6 +53,7 @@ export const useAppStore = create<AppStore>()(
       startDate: defaultStart.toISOString().slice(0, 10),
       endDate: today.toISOString().slice(0, 10),
       dismissAlert: false,
+      restaurantId: null,
       savedForecastViews: [],
       activityLog: [],
       setProfile: (profile) =>
@@ -70,6 +72,7 @@ export const useAppStore = create<AppStore>()(
       setDateRange: (startDate, endDate) => set({ startDate, endDate }),
       setDismissAlert: (dismissAlert) => set({ dismissAlert }),
       setPlan: (plan) => set((state) => ({ profile: { ...state.profile, plan } })),
+      setRestaurantId: (restaurantId) => set({ restaurantId }),
       saveForecastView: (view) =>
         set((state) => ({
           savedForecastViews: [
@@ -105,6 +108,7 @@ export const useAppStore = create<AppStore>()(
         startDate: state.startDate,
         endDate: state.endDate,
         dismissAlert: state.dismissAlert,
+        restaurantId: state.restaurantId,
         savedForecastViews: state.savedForecastViews,
         activityLog: state.activityLog
       })
