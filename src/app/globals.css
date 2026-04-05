@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 0 0% 100%;
+  --surface-muted: 45 33% 93%;
+  --surface-elevated: 0 0% 98%;
+  --text: 150 28% 13%;
+  --text-muted: 150 8% 42%;
+  --border: 149 17% 85%;
+  --ring: 149 43% 32%;
+  --sidebar-width: 18rem;
+}
+
+.dark {
+  --surface: 154 28% 7%;
+  --surface-muted: 154 17% 13%;
+  --surface-elevated: 154 22% 11%;
+  --text: 45 35% 96%;
+  --text-muted: 147 8% 68%;
+  --border: 150 16% 20%;
+  --ring: 149 43% 48%;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-cream text-text antialiased;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.28);
+  color: inherit;
+}
+
+dialog::backdrop {
+  background: rgba(7, 17, 13, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+  }
+
+  [data-print-hidden='true'] {
+    display: none !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
