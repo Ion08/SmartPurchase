@@ -37,11 +37,11 @@ export function Sidebar() {
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <Link href="/dashboard" className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-forest-700 text-sm font-semibold text-white shadow-soft">
-              SP
+              P
             </div>
             {!collapsed ? (
               <div>
-                <p className="text-sm font-semibold text-text">SmartPurchase HoReCa</p>
+                <p className="text-sm font-semibold text-text">Plateful</p>
                 <p className="text-xs text-text-muted">{locationName}</p>
               </div>
             ) : null}
