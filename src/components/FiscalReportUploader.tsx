@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 
 interface ShiftSummary {
   date: string;
-  timeBlock: string;
   totalRevenue: number;
   totalTransactions: number;
   itemsProcessed: number;
@@ -63,7 +62,7 @@ export function FiscalReportUploader() {
       
       addActivityEvent({
         type: 'import',
-        title: `Fiscal report imported: ${result.summary.timeBlock}`,
+        title: `Fiscal report imported`,
         details: `${result.summary.itemsProcessed} items, $${result.summary.totalRevenue.toFixed(2)} revenue`
       });
 
@@ -77,23 +76,6 @@ export function FiscalReportUploader() {
     }
   };
 
-  const getTimeBlockIcon = (timeBlock: string) => {
-    switch (timeBlock.toLowerCase()) {
-      case 'morning':
-      case 'breakfast':
-        return '🌅';
-      case 'noon':
-      case 'lunch':
-        return '☀️';
-      case 'evening':
-      case 'dinner':
-        return '🌙';
-      case 'night':
-        return '🌃';
-      default:
-        return '📊';
-    }
-  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -183,16 +165,6 @@ export function FiscalReportUploader() {
             </div>
           ) : summary ? (
             <div className="space-y-4">
-              {/* Time Block Header */}
-              <div className="flex items-center gap-3 rounded-xl border border-border bg-forest-50 p-4 dark:bg-forest-900/20">
-                <span className="text-2xl">{getTimeBlockIcon(summary.timeBlock)}</span>
-                <div>
-                  <p className="text-sm text-text-muted">Time Block</p>
-                  <p className="font-semibold">{summary.timeBlock}</p>
-                  <p className="text-xs text-text-muted">{summary.date}</p>
-                </div>
-              </div>
-
               {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-border bg-surface-muted p-3">
